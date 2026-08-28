@@ -1,0 +1,227 @@
+Use the files in `reference-materials` as external evidence and incomplete seed sources.
+
+Expected reference sources may include:
+
+- The external HTML prototype
+
+- Existing CSV files
+
+- Existing JSON files
+
+- `Taxonomy_Builder_Final (1)(1).xlsm`
+
+- `Target_Segments_Personas_Cohorts(1).xlsx`
+
+- Supplied screenshots
+
+Requirements:
+
+1. Preserve original source files unchanged.
+
+2. Do not embed workbook macros into the application.
+
+3. Read workbook values, lookup sheets, formulas, and relationships where technically possible.
+
+4. Stage imported values before they enter authoritative taxonomy tables.
+
+5. Record source file, source sheet or section, source value, import date, and import version.
+
+6. Classify mappings as:
+
+   - Exact
+
+   - Transformed
+
+   - Ambiguous
+
+   - Duplicate
+
+   - Unresolved
+
+   - Deprecated
+
+7. Do not overwrite conflicts silently.
+
+8. Produce an import-conflict report.
+
+9. Require review before ambiguous or conflicting values become active.
+
+10. Keep the supplied segment, persona, cohort, product, and channel lists labeled as incomplete.
+
+11. Do not represent the supplied files as the complete enterprise taxonomy.
+
+If one or more expected workbook files are not present in the Replit repository:
+
+- Record the missing source in the implementation evidence.
+
+- Continue building the governed import and staging capability.
+
+- Do not invent the missing workbook contents.
+
+- Do not mark workbook seeding as complete.
+
+- Report the missing upload as a specific acceptance exception.
+
+PART 9 — TESTING
+
+Preserve the 23-test baseline and add tests for:
+
+- Clean migration from an empty database
+
+- Upgrade migration from the current database
+
+- Migration rollback or documented recovery behavior
+
+- Stable-key immutability
+
+- Duplicate-key prevention
+
+- Duplicate-name warnings
+
+- Parent-child relationships
+
+- Cycle prevention
+
+- Many-to-many associations
+
+- Rename without key change
+
+- Retirement
+
+- Supersession
+
+- Historical-value retention
+
+- Activation rules
+
+- Import staging
+
+- Import conflicts
+
+- Missing source files
+
+- Permission enforcement
+
+- Unauthorized direct API requests
+
+- Administrator actions
+
+- Read-only access
+
+- Audit history
+
+- Usage counts
+
+- Hard-delete prevention
+
+- Search, filters, and pagination
+
+- Accessible interface behavior
+
+- Desktop and tablet layouts
+
+- Regression of all current Phase 1 functionality
+
+Do not weaken or delete existing tests to make the phase pass.
+
+If an existing test must change because an approved requirement changed, document:
+
+- The original expectation
+
+- The new expectation
+
+- Why the requirement changed
+
+- The affected test
+
+- The decision-log entry authorizing the change
+
+ACCEPTANCE CRITERIA
+
+This phase passes only when:
+
+- All 23 baseline tests still pass or any approved replacement is fully documented.
+
+- All new phase tests pass.
+
+- The architecture document exists and reflects the implemented system.
+
+- The decision log exists and contains all material decisions from this phase.
+
+- Versioned database migrations work for both clean installation and current-database upgrade.
+
+- Existing data is preserved.
+
+- Authentication is established or the remaining enterprise identity dependency is explicitly documented.
+
+- All privileged taxonomy mutations are protected by server-side authorization.
+
+- A Taxonomy Administrator can create and manage a governed draft value.
+
+- A permitted reviewer can approve and activate a value.
+
+- An unauthorized user cannot activate, retire, supersede, or import authoritative values.
+
+- A new segment, product, persona, channel, or fiscal period can be added without changing application code.
+
+- Stable keys remain unchanged after renaming.
+
+- Referenced or active values cannot be hard deleted.
+
+- Superseded values retain historical identity and point to their replacements.
+
+- Parent-child and many-to-many relationships work.
+
+- External reference-data imports produce an auditable preview and conflict report.
+
+- Missing workbook sources are identified accurately rather than silently ignored.
+
+- The interface works at desktop and tablet widths.
+
+- Audit history records all material taxonomy changes.
+
+- No existing Phase 1 functionality is broken.
+
+- All known gaps and deferred Campaign Registry dependencies are documented.
+
+AT COMPLETION
+
+Provide:
+
+- Executive summary of what was completed
+
+- Baseline and final test results
+
+- Files changed
+
+- Migrations created
+
+- Architecture decisions
+
+- Decision-log entries
+
+- Database schema changes
+
+- Authentication and permission model
+
+- API endpoints added
+
+- Import and conflict counts
+
+- Screenshots of the Taxonomy Administration workflow
+
+- Accessibility and responsive-test evidence
+
+- Known gaps
+
+- Deferred dependencies
+
+- Any acceptance criteria that did not pass
+
+- A clear recommendation on whether the application is ready for Prompt 3
+
+Do not claim the phase is complete if required evidence is missing.
+
+Do not begin the Campaign Registry or later phases.
+
+Stop after completing and reporting this phase.
