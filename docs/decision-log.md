@@ -34,6 +34,10 @@
 
 **Decision:** Use Replit OIDC/PKCE and server sessions. Bootstrap only the first administrator under a database lock; do not grant later authenticated users an implicit taxonomy role.
 
+## 2026-08-28 — Public taxonomy administration
+
+**Decision:** Supersede the earlier taxonomy authorization decision and make all taxonomy reads and administrative mutations public. Attribute unauthenticated changes to a shared `Public user` actor while retaining append-only audit records.
+
 **Reason:** Authentication does not itself confer governance authority, and concurrent first logins must not create multiple bootstrap administrators.
 
 ## 2026-08-28 — Category-scoped stewardship

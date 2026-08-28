@@ -25,19 +25,16 @@ Lifecycle is explicit: `draft → in_review → approved → active`, with `inac
 
 ## Authorization
 
-All taxonomy routes require an authenticated identity and an assigned taxonomy role. Authorization is deny-by-default:
-
-- The first authenticated user may bootstrap the first administrator under a PostgreSQL advisory transaction lock.
-- Later authenticated users receive no implicit taxonomy access; an administrator must assign a role.
+All taxonomy routes are intentionally public, including administrative mutations. The taxonomy access endpoint exposes administrator-equivalent capabilities to every caller, and the UI has no authentication gate.
 - Role order is `reader`, `contributor`, `reviewer`, `steward`, `administrator`.
 - Optional category scopes are enforced for list, detail, history, hierarchy, association, review-request, and lifecycle operations.
 - The API, not the browser, is the enforcement boundary.
 
-Cookie-authenticated mutations require a matching browser `Origin`; bearer-authenticated clients do not use browser cookies. Arbitrary credentialed CORS reflection is not enabled.
+Browser mutations require a matching `Origin`; bearer-authenticated clients bypass this CSRF check. Arbitrary credentialed CORS reflection is not enabled.
 
 ## Audit and concurrency
 
-Every governed-value mutation stores the authenticated actor, reason, and resulting snapshot. Association creation, import previews, and conflict resolutions also write governance events. Audit tables are append-only through PostgreSQL triggers. Update and lifecycle requests include `rowVersion`, and stale writes return `409`.
+Every governed-value mutation stores the public actor, reason, and resulting snapshot. Association creation, import previews, and conflict resolutions also write governance events. Audit tables are append-only through PostgreSQL triggers. Update and lifecycle requests include `rowVersion`, and stale writes return `409`.
 
 ## Controlled source imports
 

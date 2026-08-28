@@ -5,7 +5,7 @@
 - Standalone Campaign Governance web artifact and shared Express API.
 - OpenAPI contract with generated React Query hooks, model types, and Zod validators.
 - Replit OIDC/PKCE login, server sessions, current-user/logout routes, and browser auth state.
-- Deny-by-default role authorization with atomic first-administrator bootstrap and category scopes.
+- Intentionally public taxonomy administration, including all mutation and import operations.
 - 37 database-defined taxonomy categories and 37 provenance-labeled governed draft seeds.
 - Governed-value list, search, filters, create, edit, detail, hierarchy, associations, lifecycle, supersession, usage visibility, and audit history.
 - Review-request queue and creation flow.
@@ -59,7 +59,7 @@ Browser evidence captured by the automated tester:
 - Tablet review requests: `j99ow3`
 - Tablet request dialog: `rmxpmy`
 
-The temporary OIDC test identity, sessions, and taxonomy role were removed after testing. The secure first-administrator bootstrap remains available to the first real user.
+Taxonomy routes and administration screens require no login. Public changes are attributed to the shared `Public user` audit actor.
 
 ## Acceptance evidence
 

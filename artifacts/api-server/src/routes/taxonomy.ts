@@ -44,7 +44,7 @@ import {
   taxonomyImportConflictsTable,
   taxonomyReviewRequestsTable,
 } from "@workspace/db";
-import { allowsCategory, getOrBootstrapAccess, hasRole, toAccess, type TaxonomyRole } from "../lib/taxonomy-access";
+import { allowsCategory, toAccess, type TaxonomyRole } from "../lib/taxonomy-access";
 import { stageReferenceSource } from "../lib/reference-import";
 
 const router: IRouter = Router();
@@ -52,24 +52,11 @@ const router: IRouter = Router();
 type Actor = { id: string; label: string; role: string; categories: string[] };
 
 async function actorFor(req: Request, res: Response, required: TaxonomyRole = "reader"): Promise<Actor | null> {
-  if (!req.isAuthenticated()) {
-    res.status(401).json({ error: "Authentication required" });
-    return null;
-  }
-  const access = await getOrBootstrapAccess(req.user.id);
-  if (!access) {
-    res.status(403).json({ error: "No taxonomy role has been assigned" });
-    return null;
-  }
-  if (!hasRole(access.role, required)) {
-    res.status(403).json({ error: "Insufficient taxonomy permission" });
-    return null;
-  }
   return {
-    id: req.user.id,
-    label: req.user.email ?? ([req.user.firstName, req.user.lastName].filter(Boolean).join(" ") || "Authenticated user"),
-    role: access.role,
-    categories: access.categories,
+    id: "public",
+    label: "Public user",
+    role: "administrator",
+    categories: [],
   };
 }
 

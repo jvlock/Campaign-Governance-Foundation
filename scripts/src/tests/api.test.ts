@@ -43,7 +43,10 @@ async function installActor(userId: string, sid: string, role: string, categorie
 async function api(path: string, sid?: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (sid) headers.set("Authorization", `Bearer ${sid}`);
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (init.body) {
+    headers.set("Content-Type", "application/json");
+    headers.set("Origin", "http://localhost:80");
+  }
   return fetch(`${baseUrl}${path}`, { ...init, headers });
 }
 
@@ -62,22 +65,32 @@ test("health remains public and database-aware", async () => {
   assert.equal(body.database, "reachable");
 });
 
-test("taxonomy administration denies unauthenticated and unauthorized mutations", async () => {
-  assert.equal((await api("/taxonomy/access")).status, 401);
-  const denied = await api("/taxonomy/values", readerSid, {
+test("taxonomy administration is publicly accessible, including mutations", async () => {
+  const access = await api("/taxonomy/access");
+  assert.equal(access.status, 200);
+  assert.deepEqual(await access.json(), {
+    role: "administrator",
+    canRead: true,
+    canPropose: true,
+    canReview: true,
+    canActivate: true,
+    canAdminister: true,
+    categories: [],
+  });
+  const created = await api("/taxonomy/values", undefined, {
     method: "POST",
     body: JSON.stringify({
-      stableKey: `DENIED_${crypto.randomUUID()}`,
+      stableKey: `PUBLIC_${crypto.randomUUID()}`,
       category: "segment",
-      displayName: "Denied",
-      definition: "This request must not be persisted.",
+      displayName: "Public mutation",
+      definition: "This unauthenticated request must be persisted.",
       effectiveStart: "2026-08-28",
       taxonomyVersion: "test",
       source: "Test",
       owner: "Test",
     }),
   });
-  assert.equal(denied.status, 403);
+  assert.equal(created.status, 201, await created.clone().text());
 });
 
 test("OIDC login and logout reject backslash return-path escapes", async () => {
@@ -96,26 +109,16 @@ test("OIDC login and logout reject backslash return-path escapes", async () => {
   assert.equal(new URL(postLogout).pathname, "/");
 });
 
-test("category-scoped contributors cannot create review requests outside their scope", async () => {
-  const denied = await api("/taxonomy/review-requests", scopedSid, {
+test("public users can create review requests in any category", async () => {
+  const response = await api("/taxonomy/review-requests", undefined, {
     method: "POST",
     body: JSON.stringify({
       category: "channel",
-      proposedName: "Scoped bypass attempt",
-      context: "This cross-category request must be denied by the API.",
+      proposedName: `Public channel ${crypto.randomUUID()}`,
+      context: "This request is submitted through the public taxonomy workspace.",
     }),
   });
-  assert.equal(denied.status, 403);
-
-  const allowed = await api("/taxonomy/review-requests", scopedSid, {
-    method: "POST",
-    body: JSON.stringify({
-      category: "segment",
-      proposedName: `Scoped segment ${crypto.randomUUID()}`,
-      context: "This request is within the contributor's assigned segment scope.",
-    }),
-  });
-  assert.equal(allowed.status, 201, await allowed.clone().text());
+  assert.equal(response.status, 201, await response.clone().text());
 });
 
 test("administrator can add multiple categories without code changes", async () => {
@@ -180,7 +183,7 @@ test("rename preserves stable key, rejects stale updates, records history, and p
   const history = await api(`/taxonomy/values/${created.id}/history`, adminSid);
   assert.equal(history.status, 200);
   const events = await history.json() as any[];
-  assert.ok(events.some((event) => event.action === "updated" && event.actorId === adminUserId));
+  assert.ok(events.some((event) => event.action === "updated" && event.actorId === "public"));
 
   const deletion = await api(`/taxonomy/values/${created.id}`, adminSid, { method: "DELETE" });
   assert.equal(deletion.status, 409);

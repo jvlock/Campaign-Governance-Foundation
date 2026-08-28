@@ -38,9 +38,8 @@ A greenfield, segment-led workspace for governing integrated Sales and Marketing
 - This is a greenfield build; supplied files are immutable references only.
 - Governed taxonomy values are persistent versioned records, never page-level arrays.
 - OpenAPI is the contract source of truth; regenerate clients and validators after every contract change.
-- Replit OIDC authenticates users; taxonomy authorization is deny-by-default.
-- The first authenticated user atomically bootstraps as administrator only while no taxonomy role exists.
-- Later users require an explicitly assigned role; optional category scopes are enforced by the API.
+- Taxonomy administration is intentionally public, including create, update, lifecycle, association, review-request, and import operations.
+- Public taxonomy audit records use the actor label `Public user`; authentication is not required for taxonomy routes.
 - Campaign identity will be an enduring non-semantic key independent of names and fiscal periods.
 - Referenced taxonomy values are retired or superseded, not deleted.
 - Audit and governance events are append-only.
