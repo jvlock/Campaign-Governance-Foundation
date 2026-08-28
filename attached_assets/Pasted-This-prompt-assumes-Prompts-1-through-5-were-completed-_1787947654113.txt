@@ -1,0 +1,117 @@
+This prompt assumes Prompts 1 through 5 were completed in the same Replit project. If they were not, stop and complete them first. Verify current campaign keys, hierarchy, taxonomy, fiscal-calendar entities, decisions, and passing test evidence before making changes. Do not assume functionality exists without repository and test evidence.
+
+Build financial planning support for campaigns that run across quarters and years.
+
+Core principle: preserve one enduring campaign identity while automatically creating financial planning periods beneath it. Do not create an unrelated campaign every quarter and do not change the Campaign Key or master UTM identity at fiscal year-end.
+
+Add a guided timing and budget step that captures:
+
+Campaign start date
+
+Expected end date
+
+Ongoing or evergreen status
+
+Review or renewal date
+
+Applicable fiscal calendar
+
+Total requested budget
+
+Total approved budget
+
+Currency
+
+Budget owner
+
+Cost center
+
+Funding source
+
+Allocation method
+
+Fiscal calendar requirements:
+
+Fiscal calendars must be configurable by administrators.
+
+Do not assume calendar-year quarters.
+
+Store fiscal year, quarter, period, start date, end date, status, and close date.
+
+Historical periods must not change when future calendar rules change.
+
+Automatic period generation:
+
+Determine all fiscal periods touched by the campaign dates.
+
+Create Campaign Planning Period records with stable keys.
+
+Generate readable names such as FY2028 Q1 | Pension Plans | Total Portfolio Visibility.
+
+Do not include the fiscal period in the enduring Campaign Key.
+
+Allow allocation evenly, by month, by quarter, by activity, by channel, or through custom values.
+
+Ensure allocations reconcile exactly to approved totals within defined currency precision.
+
+Track for every period:
+
+Requested
+
+Approved
+
+Planned
+
+Committed
+
+Actual
+
+Forecast
+
+Remaining
+
+Variance
+
+Activity allocation requirements:
+
+Assign activities to planning periods based on dates.
+
+If an activity crosses periods, require an allocation method: invoice date, evenly by day, evenly by month, or custom.
+
+Preserve both delivery dates and accounting dates.
+
+Prevent cost from being counted twice across products, segments, regions, or channels.
+
+Support percentage allocation for shared costs while retaining one authoritative total.
+
+Quarter-close requirements:
+
+Reconcile planned, committed, actual, and forecast spend.
+
+Record variance explanation.
+
+Decide whether unused budget expires or carries forward.
+
+Lock closed periods.
+
+Require approved reopening for changes to a closed period.
+
+Preserve every prior budget value and change reason.
+
+Acceptance criteria:
+
+A multi-year campaign automatically receives all applicable fiscal periods.
+
+A non-calendar fiscal calendar produces correct periods.
+
+Allocations reconcile exactly.
+
+Cross-quarter activities split correctly using each allocation method.
+
+Closed periods reject unauthorized changes.
+
+Campaign-level totals reconcile to period and activity totals.
+
+Tests cover date boundaries, leap years, currency precision, closed periods, evergreen campaigns, and shared costs.
+
+At completion, provide calculation examples, reconciliation evidence, screenshots, migrations, test results, and unresolved finance-policy questions. Stop after this phase.
