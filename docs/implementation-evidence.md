@@ -30,7 +30,7 @@ All supplied files under `reference-materials/` remain source evidence and were 
 - Full TypeScript project check: passed.
 - API and web managed workflow restarts: passed.
 - Database-aware health endpoint: HTTP 200.
-- Automated smoke suite: **14 passed, 0 failed**.
+- Automated smoke suite: **23 passed, 0 failed**.
 - Desktop browser E2E: passed.
   - Auth gate and OIDC bootstrap
   - database list and filters
@@ -79,5 +79,64 @@ Taxonomy routes and administration screens require no login. Public changes are 
 - Business owners must review seeded drafts before activation; source materials are not treated as enterprise truth.
 - Role assignment has an API/database model but no dedicated role-management screen in this phase.
 - Import preview stages and reviews candidates; no batch applies source candidates directly to active values.
-- Campaign Registry and Campaign Setup Assistant are not implemented. The newly supplied setup brief depends on a Campaign Registry phase and must follow it.
-- Budgeting, campaign creation, reporting, and live integrations remain out of scope.
+- Reporting, finance posting, campaign approval beyond submission, and live integrations remain out of scope.
+
+## Campaign planning and budgeting evidence — 2026-08-29
+
+Delivered backend foundations:
+
+- Registry CRUD/search/detail with an immutable, non-semantic UUID Campaign Key.
+- Guided-setup draft persistence, inheritance for waves/activities/copies, readiness issues, duplicate candidates, and submission.
+- Normalized audience dimensions, one primary segment, multiple personas/functions, raw-title evidence, planning-count warnings, account-size measurement basis, and governance requests for unresolved classifications.
+- Multi-product associations and activity subsets without campaign duplication; a separate authoritative-cost fact with basis-point reporting dimensions.
+- Contract-first activity create/update endpoints preserve delivery/accounting dates and enforce that promoted products are a subset of campaign products.
+- Contract-first authoritative-cost create/update and dimension-replacement endpoints require each represented product, segment, region, or channel view to reconcile to exactly 10,000 basis points; invalid 9,999-basis-point input is covered by API tests.
+- Campaign detail is reload-complete: it includes activities with product subsets and activity-period allocations, plus authoritative costs with their reporting dimensions. The active-fiscal-snapshot endpoint returns the immutable published snapshot and its explicit ordered period boundaries.
+- Configurable versioned fiscal snapshots and explicit non-calendar periods.
+- Automatic touched-period generation for dated and evergreen campaigns.
+- Exact integer-minor-unit allocation for even, month/day-weighted, quarterly, and custom planning plus invoice-date, daily, monthly, and custom activity splits.
+- Requested, approved, planned, committed, actual, forecast, derived remaining and variance.
+- Closed-period locks, approved reopening, variance explanation, expire/carry-forward decision, and append-only campaign/budget history.
+
+Calculation example: USD 100.01 is represented as `"10001"`. An even two-period allocation produces `"5001"` and `"5000"` in deterministic period order, totaling exactly `"10001"`. No binary floating-point value is introduced. A February-start fiscal snapshot covering 2030-02-01 through 2030-04-30 generates two planning periods beneath the same Campaign Key.
+
+Verification completed in this implementation pass:
+
+- OpenAPI generation: passed.
+- Full workspace TypeScript check: passed.
+- Automated smoke suite: **23 passed, 0 failed**.
+- A focused API test now covers a non-calendar snapshot and its active-snapshot read response, reload-complete campaign detail, registry draft, normalized audience/product plans, activity creation/update and product subsets, authoritative shared cost, exact percentage dimensions, closed-period cost locking, readiness, a 10,001-minor-unit budget, exact allocation, and unchanged Campaign Key. A second API test covers an evergreen campaign whose review date crosses the explicit 2032-02-29 leap-day boundary.
+- Database tests verify campaign/planning tables, immutable-key and append-only-history controls, the forward closed-period lock migration, and transactional `FOR UPDATE` protection on financial mutation routes.
+- Database tests also verify that published fiscal snapshots reject later period inserts and permit only the one-way unpublished-to-published transition.
+- Production campaign and finance mutations require an authenticated actor; audit attribution is session-derived, and period reopening is restricted to the interim administrator approval role.
+- Campaign initialization retains its created Campaign Key if initial budget setup fails and retries against that identity rather than creating a duplicate.
+- Frontend currency parsing, aggregation, subtraction, and formatting use decimal strings and `bigint` minor-unit arithmetic.
+- Desktop browser E2E verified real governed product cost allocation, exact persisted percentage metadata, live query refresh, planning-period updates, required reconciliation and reopen approval forms, close/reopen locking, financial audit history, registry search, and unchanged Campaign Key.
+- Browser/backend logs were clean during the final close/reopen and audit-history pass.
+
+Campaign planning screenshots saved in `docs/screenshots/`:
+
+- `fiscal-calendars.jpg` — active immutable non-calendar fiscal snapshot and explicit period boundaries.
+- `campaign-planning-workspace.jpg` — enduring Campaign Key, readiness, audiences/products, and budget summary.
+- `campaign-registry.jpg` — searchable campaign registry retaining one Campaign Key.
+
+Automated browser evidence:
+
+- Audience/product plan: `7fmad6`
+- Exact financial-period allocation: `jumpvh`
+- Cross-period activity allocation: `esp60l`
+- Persisted authoritative-cost product allocation: `xv78fo`
+- Close/reopen state: `5i0r8r`
+- Financial audit trail after approved reopen: `i07oxb`
+- Registry search with unchanged Campaign Key: `oit0p5`
+
+Unresolved finance-policy questions:
+
+1. Which roles or external approval system may approve budgets and reopen periods in production?
+2. Is remaining budget defined as approved minus actual and committed, or should open purchase orders and accruals be treated separately?
+3. Should forecast mean total expected final spend or only spend not yet actualized?
+4. Which currencies with nonstandard minor units are permitted, and who owns currency precision changes?
+5. Is carry-forward automatic, capped, or subject to a new approval and funding-source restriction?
+6. Which accounting date wins when invoice, service, posting, and payment dates differ?
+7. Are negative corrections allowed after close, and if so must they use a correcting period rather than reopening?
+8. For month allocation, should partial months be day-weighted or treated as equal active months? The current activity monthly method treats active months equally; campaign monthly allocation is day-weighted across explicit periods.

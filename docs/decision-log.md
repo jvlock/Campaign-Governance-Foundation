@@ -63,3 +63,27 @@
 **Decision:** Stop after Taxonomy Administration. Do not begin Campaign Registry or the newly supplied Campaign Setup Assistant in this task.
 
 **Reason:** The setup brief explicitly depends on prior Campaign Registry evidence, which is not part of this delivered phase.
+
+## 2026-08-29 — Enduring Campaign Key and normalized planning
+
+**Decision:** Generate an opaque UUID Campaign Key once. Keep names, UTM labels, fiscal periods, audiences, products, and activities as mutable or versioned records beneath that key. Model audience dimensions and product roles separately rather than duplicating a campaign.
+
+**Reason:** Renaming or crossing a fiscal year must not break identity, and multi-audience/multi-product reporting must not multiply campaign or cost facts.
+
+## 2026-08-29 — One authoritative cost and exact minor-unit arithmetic
+
+**Decision:** Store monetary values as integer minor-unit strings and calculate with `bigint`. A cost has one authoritative amount; segment, product, region, and channel attribution uses basis-point allocation rows. Use deterministic largest-remainder allocation so generated rows reconcile exactly.
+
+**Reason:** JavaScript floating point cannot safely represent financial decimals, while duplicating cost facts for reporting dimensions overstates spend.
+
+## 2026-08-29 — Published fiscal snapshots are immutable
+
+**Decision:** Fiscal calendars have explicitly published, versioned snapshots containing their periods and boundaries. Existing campaign budgets reference a snapshot, not mutable calendar rules. Period status may close, but historical boundaries cannot change.
+
+**Reason:** Non-calendar fiscal years and historical financial reports must remain reproducible after an administrator changes future calendar rules.
+
+## 2026-08-29 — Closed-period control
+
+**Decision:** Lock closed campaign planning periods in both API and database controls. Reopening requires a reason and named approver and creates immutable history.
+
+**Reason:** Auditability requires enforced controls rather than UI convention, while legitimate correcting entries still need an approved path.

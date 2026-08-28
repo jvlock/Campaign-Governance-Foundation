@@ -477,6 +477,584 @@ export interface FoundationActivity {
   recordedAt: string;
 }
 
+export type CampaignRelationshipType = typeof CampaignRelationshipType[keyof typeof CampaignRelationshipType];
+
+
+export const CampaignRelationshipType = {
+  new: 'new',
+  wave: 'wave',
+  activity: 'activity',
+  copy: 'copy',
+} as const;
+
+export type CampaignStatus = typeof CampaignStatus[keyof typeof CampaignStatus];
+
+
+export const CampaignStatus = {
+  draft: 'draft',
+  submitted: 'submitted',
+  approved: 'approved',
+  archived: 'archived',
+} as const;
+
+export type CampaignSetupData = { [key: string]: unknown };
+
+export type CampaignType = typeof CampaignType[keyof typeof CampaignType];
+
+
+export const CampaignType = {
+  integrated: 'integrated',
+  activation: 'activation',
+  nurture: 'nurture',
+  event: 'event',
+  research_content: 'research_content',
+  paid_media: 'paid_media',
+  sales_cadence: 'sales_cadence',
+  client_expansion: 'client_expansion',
+  newsletter: 'newsletter',
+  in_app: 'in_app',
+  approved_other: 'approved_other',
+} as const;
+
+export interface Campaign {
+  /** Enduring non-semantic identity; never derived from names or fiscal periods */
+  campaignKey: string;
+  name: string;
+  campaignType: CampaignType;
+  relationshipType: CampaignRelationshipType;
+  /** @nullable */
+  parentCampaignKey?: string | null;
+  /** @nullable */
+  copiedFromCampaignKey?: string | null;
+  status: CampaignStatus;
+  /** @nullable */
+  objective?: string | null;
+  /** @nullable */
+  customerNeed?: string | null;
+  /** @nullable */
+  desiredAction?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  isEvergreen: boolean;
+  /** @nullable */
+  reviewDate?: string | null;
+  /** @nullable */
+  deliverySummary?: string | null;
+  setupData: CampaignSetupData;
+  issueSummary: string[];
+  /** @nullable */
+  submittedAt?: string | null;
+  rowVersion: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CampaignInputRelationshipType = typeof CampaignInputRelationshipType[keyof typeof CampaignInputRelationshipType];
+
+
+export const CampaignInputRelationshipType = {
+  new: 'new',
+  wave: 'wave',
+  activity: 'activity',
+  copy: 'copy',
+} as const;
+
+export type CampaignInputSetupData = { [key: string]: unknown };
+
+export interface CampaignInput {
+  /** @minLength 1 */
+  name: string;
+  campaignType: CampaignType;
+  relationshipType: CampaignInputRelationshipType;
+  /** @nullable */
+  parentCampaignKey?: string | null;
+  /** @nullable */
+  copiedFromCampaignKey?: string | null;
+  /** @nullable */
+  objective?: string | null;
+  /** @nullable */
+  customerNeed?: string | null;
+  /** @nullable */
+  desiredAction?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  isEvergreen?: boolean;
+  /** @nullable */
+  reviewDate?: string | null;
+  /** @nullable */
+  deliverySummary?: string | null;
+  setupData?: CampaignInputSetupData;
+}
+
+export type CampaignUpdate = CampaignInput & {
+  /** @minimum 1 */
+  rowVersion: number;
+  /** @minLength 1 */
+  reason: string;
+};
+
+export type AudienceDimension = typeof AudienceDimension[keyof typeof AudienceDimension];
+
+
+export const AudienceDimension = {
+  segment_family: 'segment_family',
+  subsegment: 'subsegment',
+  account_size_tier: 'account_size_tier',
+  account_priority: 'account_priority',
+  relationship: 'relationship',
+  buying_group_function: 'buying_group_function',
+  persona: 'persona',
+  seniority: 'seniority',
+  messaging_cohort: 'messaging_cohort',
+  behavioral_cohort: 'behavioral_cohort',
+  audience_origin: 'audience_origin',
+  region: 'region',
+  country: 'country',
+  language: 'language',
+  journey_stage: 'journey_stage',
+} as const;
+
+export interface AudienceSelectionInput {
+  dimension: AudienceDimension;
+  /** @nullable */
+  governedValueId?: string | null;
+  /** @nullable */
+  unresolvedLabel?: string | null;
+  isPrimary: boolean;
+  /** @nullable */
+  rawRepresentativeTitle?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  estimatedAudienceCount?: number | null;
+  /** @nullable */
+  measurementBasis?: string | null;
+}
+
+export type AudienceSelection = AudienceSelectionInput & {
+  id: string;
+  campaignKey: string;
+  warningCodes: string[];
+  createdAt: string;
+};
+
+export type ProductRole = typeof ProductRole[keyof typeof ProductRole];
+
+
+export const ProductRole = {
+  primary_solution: 'primary_solution',
+  supporting_capability: 'supporting_capability',
+  cross_sell_offer: 'cross_sell_offer',
+  upsell_offer: 'upsell_offer',
+  proof_point: 'proof_point',
+  content_data_source: 'content_data_source',
+  cta_destination: 'cta_destination',
+  internal_relevance: 'internal_relevance',
+} as const;
+
+export interface ProductAssociationInput {
+  productValueId: string;
+  role: ProductRole;
+  isPrimary: boolean;
+}
+
+export type ProductAssociation = ProductAssociationInput & {
+  id: string;
+  campaignKey: string;
+  createdAt: string;
+};
+
+/**
+ * Exact integer amount in the currency minor unit; never floating point
+ * @pattern ^-?[0-9]+$
+ */
+export type MinorMoney = string;
+
+export interface CampaignActivityInput {
+  /** @minLength 1 */
+  name: string;
+  deliveryStartDate: string;
+  deliveryEndDate: string;
+  /** @nullable */
+  accountingDate?: string | null;
+  /** @nullable */
+  channelValueId?: string | null;
+  authoritativeCostMinor: MinorMoney;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  productValueIds: string[];
+}
+
+export type CampaignActivity = CampaignActivityInput & {
+  id: string;
+  campaignKey: string;
+  createdAt: string;
+};
+
+export type ActivityPeriodAllocationAllocationMethod = typeof ActivityPeriodAllocationAllocationMethod[keyof typeof ActivityPeriodAllocationAllocationMethod];
+
+
+export const ActivityPeriodAllocationAllocationMethod = {
+  invoice_date: 'invoice_date',
+  daily: 'daily',
+  monthly: 'monthly',
+  custom: 'custom',
+} as const;
+
+export interface ActivityPeriodAllocation {
+  id: string;
+  activityId: string;
+  campaignPlanningPeriodId: string;
+  allocationMethod: ActivityPeriodAllocationAllocationMethod;
+  amountMinor: MinorMoney;
+  /** @nullable */
+  accountingDate?: string | null;
+}
+
+export type CampaignActivityDetail = CampaignActivity & {
+  periodAllocations: ActivityPeriodAllocation[];
+};
+
+export interface CampaignCostInput {
+  /** @minLength 1 */
+  description: string;
+  authoritativeAmountMinor: MinorMoney;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+}
+
+export type CampaignCost = CampaignCostInput & {
+  id: string;
+  campaignKey: string;
+  createdAt: string;
+};
+
+export type CostDimension = typeof CostDimension[keyof typeof CostDimension];
+
+
+export const CostDimension = {
+  product: 'product',
+  segment: 'segment',
+  region: 'region',
+  channel: 'channel',
+} as const;
+
+export type CostDimensionAllocationInputMetadata = { [key: string]: unknown };
+
+export interface CostDimensionAllocationInput {
+  dimension: CostDimension;
+  /** @minLength 1 */
+  dimensionKey: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  allocationBasisPoints: number;
+  metadata?: CostDimensionAllocationInputMetadata;
+}
+
+export type CostDimensionAllocation = CostDimensionAllocationInput & {
+  id: string;
+  costId: string;
+};
+
+export type CampaignCostDetail = CampaignCost & {
+  dimensions: CostDimensionAllocation[];
+};
+
+/**
+ * @nullable
+ */
+export type CampaignPlanningPeriodUnusedBudgetTreatment = typeof CampaignPlanningPeriodUnusedBudgetTreatment[keyof typeof CampaignPlanningPeriodUnusedBudgetTreatment] | null;
+
+
+export const CampaignPlanningPeriodUnusedBudgetTreatment = {
+  expire: 'expire',
+  carry_forward: 'carry_forward',
+} as const;
+
+export type CampaignPlanningPeriodStatus = typeof CampaignPlanningPeriodStatus[keyof typeof CampaignPlanningPeriodStatus];
+
+
+export const CampaignPlanningPeriodStatus = {
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface CampaignPlanningPeriod {
+  id: string;
+  stableKey: string;
+  campaignKey: string;
+  fiscalPeriodId: string;
+  readableName: string;
+  requestedMinor: MinorMoney;
+  approvedMinor: MinorMoney;
+  plannedMinor: MinorMoney;
+  committedMinor: MinorMoney;
+  actualMinor: MinorMoney;
+  forecastMinor: MinorMoney;
+  remainingMinor: MinorMoney;
+  varianceMinor: MinorMoney;
+  /** @nullable */
+  varianceExplanation?: string | null;
+  /** @nullable */
+  unusedBudgetTreatment?: CampaignPlanningPeriodUnusedBudgetTreatment;
+  status: CampaignPlanningPeriodStatus;
+  /** @nullable */
+  closedAt?: string | null;
+  /** @nullable */
+  reopenedAt?: string | null;
+  rowVersion: number;
+}
+
+export type CampaignHistoryEventSnapshot = { [key: string]: unknown };
+
+export interface CampaignHistoryEvent {
+  id: string;
+  campaignKey: string;
+  action: string;
+  actorId: string;
+  reason: string;
+  snapshot: CampaignHistoryEventSnapshot;
+  createdAt: string;
+}
+
+export type CampaignDetail = Campaign & {
+  audiences: AudienceSelection[];
+  products: ProductAssociation[];
+  activities: CampaignActivityDetail[];
+  costs: CampaignCostDetail[];
+  planningPeriods: CampaignPlanningPeriod[];
+  history: CampaignHistoryEvent[];
+};
+
+export interface CampaignReadiness {
+  ready: boolean;
+  issues: string[];
+  probableDuplicates: Campaign[];
+}
+
+export interface CampaignSubmissionInput {
+  /** @minLength 1 */
+  reason: string;
+}
+
+export interface AudiencePlanInput {
+  selections: AudienceSelectionInput[];
+}
+
+export interface ProductPlanInput {
+  associations: ProductAssociationInput[];
+}
+
+export type CampaignActivityUpdate = CampaignActivityInput & {
+  /** @minLength 1 */
+  reason: string;
+};
+
+export type CampaignCostUpdate = CampaignCostInput & {
+  /** @minLength 1 */
+  reason: string;
+};
+
+export interface CostDimensionPlanInput {
+  /** @minItems 1 */
+  allocations: CostDimensionAllocationInput[];
+}
+
+export interface FiscalCalendar {
+  id: string;
+  stableKey: string;
+  name: string;
+  /** @nullable */
+  activeSnapshotId?: string | null;
+  createdAt: string;
+}
+
+export interface FiscalCalendarInput {
+  /** @minLength 3 */
+  stableKey: string;
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface FiscalPeriodInput {
+  stableKey: string;
+  fiscalYear: string;
+  fiscalQuarter: string;
+  fiscalPeriod: string;
+  startDate: string;
+  endDate: string;
+}
+
+export type FiscalPeriodStatus = typeof FiscalPeriodStatus[keyof typeof FiscalPeriodStatus];
+
+
+export const FiscalPeriodStatus = {
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export type FiscalPeriod = FiscalPeriodInput & ({
+  id: string;
+  snapshotId: string;
+  status: FiscalPeriodStatus;
+  /** @nullable */
+  closedAt?: string | null;
+});
+
+export type FiscalCalendarSnapshotInputRules = { [key: string]: unknown };
+
+export interface FiscalCalendarSnapshotInput {
+  /** @minimum 1 */
+  version: number;
+  rules: FiscalCalendarSnapshotInputRules;
+  /** @minItems 1 */
+  periods: FiscalPeriodInput[];
+}
+
+export type FiscalCalendarSnapshotRules = { [key: string]: unknown };
+
+export interface FiscalCalendarSnapshot {
+  id: string;
+  fiscalCalendarId: string;
+  version: number;
+  rules: FiscalCalendarSnapshotRules;
+  isPublished: boolean;
+  createdBy: string;
+  createdAt: string;
+  periods: FiscalPeriod[];
+}
+
+export type CampaignBudgetInputAllocationMethod = typeof CampaignBudgetInputAllocationMethod[keyof typeof CampaignBudgetInputAllocationMethod];
+
+
+export const CampaignBudgetInputAllocationMethod = {
+  even: 'even',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  activity: 'activity',
+  channel: 'channel',
+  custom: 'custom',
+} as const;
+
+export interface CampaignBudgetInput {
+  fiscalCalendarSnapshotId: string;
+  requestedMinor: MinorMoney;
+  approvedMinor: MinorMoney;
+  /**
+     * @minLength 3
+     * @maxLength 3
+     */
+  currency: string;
+  /**
+     * @minimum 0
+     * @maximum 4
+     */
+  currencyMinorUnits: number;
+  /** @minLength 1 */
+  budgetOwner: string;
+  /** @minLength 1 */
+  costCenter: string;
+  /** @minLength 1 */
+  fundingSource: string;
+  allocationMethod: CampaignBudgetInputAllocationMethod;
+}
+
+export type CampaignBudget = CampaignBudgetInput & {
+  id: string;
+  campaignKey: string;
+  rowVersion: number;
+  updatedAt: string;
+};
+
+export interface MinorAllocationInput {
+  key: string;
+  amountMinor: MinorMoney;
+}
+
+export type PlanningPeriodGenerationInputMethod = typeof PlanningPeriodGenerationInputMethod[keyof typeof PlanningPeriodGenerationInputMethod];
+
+
+export const PlanningPeriodGenerationInputMethod = {
+  even: 'even',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  activity: 'activity',
+  channel: 'channel',
+  custom: 'custom',
+} as const;
+
+export interface PlanningPeriodGenerationInput {
+  method: PlanningPeriodGenerationInputMethod;
+  customAllocations?: MinorAllocationInput[];
+  /** Exact nonnegative period weights used for activity- or channel-led planning */
+  allocationWeights?: MinorAllocationInput[];
+}
+
+export interface PlanningPeriodUpdate {
+  plannedMinor: MinorMoney;
+  committedMinor: MinorMoney;
+  actualMinor: MinorMoney;
+  forecastMinor: MinorMoney;
+  /** @nullable */
+  varianceExplanation: string | null;
+  rowVersion: number;
+  /** @minLength 1 */
+  reason: string;
+}
+
+export type PeriodCloseInputUnusedBudgetTreatment = typeof PeriodCloseInputUnusedBudgetTreatment[keyof typeof PeriodCloseInputUnusedBudgetTreatment];
+
+
+export const PeriodCloseInputUnusedBudgetTreatment = {
+  expire: 'expire',
+  carry_forward: 'carry_forward',
+} as const;
+
+export interface PeriodCloseInput {
+  /** @minLength 1 */
+  reason: string;
+  /** @minLength 1 */
+  varianceExplanation: string;
+  unusedBudgetTreatment: PeriodCloseInputUnusedBudgetTreatment;
+}
+
+export interface PeriodReopenInput {
+  /** @minLength 1 */
+  reason: string;
+  /** @minLength 1 */
+  approvedBy: string;
+}
+
+export type ActivityAllocationInputMethod = typeof ActivityAllocationInputMethod[keyof typeof ActivityAllocationInputMethod];
+
+
+export const ActivityAllocationInputMethod = {
+  invoice_date: 'invoice_date',
+  daily: 'daily',
+  monthly: 'monthly',
+  custom: 'custom',
+} as const;
+
+export interface ActivityAllocationInput {
+  method: ActivityAllocationInputMethod;
+  customAllocations?: MinorAllocationInput[];
+}
+
 export type BeginBrowserLoginParams = {
 returnTo?: string;
 };
@@ -494,5 +1072,10 @@ category?: TaxonomyCategoryKey;
 status?: GovernanceStatus;
 search?: string;
 parentId?: string;
+};
+
+export type ListCampaignsParams = {
+search?: string;
+status?: string;
 };
 

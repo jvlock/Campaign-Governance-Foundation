@@ -1,4 +1,4 @@
-# Architecture: Campaign Governance and Taxonomy Administration
+# Architecture: Campaign Governance, Planning, and Taxonomy Administration
 
 ## System structure
 
@@ -8,7 +8,25 @@
 - **Persistence:** PostgreSQL with Drizzle schema definitions, versioned SQL migrations, and idempotent seeds.
 - **Authentication:** Replit OpenID Connect with PKCE, server-side sessions, browser cookies, and bearer-session support for non-browser clients.
 
-The current delivered product includes the responsive application shell and database-driven Taxonomy Administration. Campaign setup, campaign registry, budgeting, reporting, and live business-system integrations remain outside this phase.
+The backend now includes Campaign Registry, resumable guided-setup drafts, normalized audience/product planning, fiscal snapshots, and multi-period budgeting. The React application remains unchanged; reporting and live business-system integrations remain outside this phase.
+
+## Campaign identity and setup
+
+`campaigns.campaign_key` is a generated UUID and the enduring campaign identity. It is never calculated from a name, date, fiscal year, or UTM label, and a database trigger prevents changing it. Mutable names and automatically generated planning-period names are attributes beneath that identity. Waves, activities, and copied campaigns retain explicit source relationships; inherited setup, audiences, and products are copied visibly into a new draft without changing either campaign's identity.
+
+Draft setup captures the business-language campaign type, relationship, objective, customer need, desired action, dates/evergreen review, delivery summary, and extensible step data. Readiness checks required answers, a primary segment, persona and product coverage, date consistency, and probable duplicates before submission. Audience selections are normalized by dimension; personas, buying-group functions, messaging cohorts, geography, language, relationship and journey stage remain independently reportable.
+
+Products are many-to-many with explicit roles. Activities may select a subset. `campaign_costs.authoritative_amount_minor` is the single cost fact; product, segment, region, and channel rows are allocation dimensions and cannot create another authoritative cost.
+
+Activity create/update APIs retain delivery start/end separately from the optional accounting date, enforce product subsets against the campaign plan, and reject mutation when an existing allocation touches a closed period. Authoritative campaign costs have dedicated create/update APIs. Their reporting allocations use integer basis points: every represented dimension must independently total exactly 10,000 (100%). Totals are never added across dimensions, so a cost attributed across product, segment, region, and channel still contributes only its one authoritative amount to campaign spend.
+
+## Fiscal planning and money
+
+Money crosses API and persistence boundaries as base-10 integer minor-unit strings. Calculations convert those strings to `bigint`; floating-point arithmetic is never used. Largest-remainder allocation produces deterministic exact totals for even, monthly/day-weighted, quarterly, and custom allocations. The model separately stores requested, approved, planned, committed, actual, and forecast; remaining and variance are derived from exact integers.
+
+Administrators publish immutable versions of configurable fiscal calendars. Each snapshot contains explicit fiscal year, quarter, period, start/end dates and status, so later rule changes cannot rewrite historical boundaries. Campaign dates select every touched period and create stable campaign-planning-period keys below the unchanged Campaign Key. Evergreen campaigns plan through their required review date.
+
+Activities preserve delivery dates and an optional accounting date. Cross-period costs support invoice-date, daily, monthly, and exactly reconciled custom allocation. Closed planning periods reject value changes and activity allocation. Reopening changes only the lock state and requires both a reason and named approver; every budget mutation stores an append-only snapshot.
 
 ## Governed taxonomy model
 
@@ -56,4 +74,4 @@ Candidates are persisted with source locations and raw source context. They neve
 
 ## Deferred systems
 
-Campaign Registry, guided Campaign Setup, approvals outside taxonomy lifecycle, budgets, reporting, Salesforce/Pardot, media platforms, analytics, finance, and data-warehouse integrations require separately approved contracts and ownership. No simulated integration is presented as production behavior.
+Approval workflow beyond setup submission and period reopening, reporting, Salesforce/Pardot, media platforms, analytics, finance-system posting, and data-warehouse integrations require separately approved contracts and ownership. No simulated integration is presented as production behavior.

@@ -3,13 +3,16 @@ import crypto from "node:crypto";
 import test from "node:test";
 import {
   db,
+  campaignPlanningPeriodsTable,
+  governedValuesTable,
   sessionsTable,
   taxonomyUserRolesTable,
   usersTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const baseUrl = "http://localhost:80/api";
+const baseUrl = process.env.API_URL || "http://localhost:80/api";
+const baseOrigin = new URL(baseUrl).origin;
 const adminUserId = "taxonomy-api-test-admin";
 const readerUserId = "taxonomy-api-test-reader";
 const scopedUserId = "taxonomy-api-test-scoped";
@@ -45,7 +48,7 @@ async function api(path: string, sid?: string, init: RequestInit = {}) {
   if (sid) headers.set("Authorization", `Bearer ${sid}`);
   if (init.body) {
     headers.set("Content-Type", "application/json");
-    headers.set("Origin", "http://localhost:80");
+    headers.set("Origin", baseOrigin);
   }
   return fetch(`${baseUrl}${path}`, { ...init, headers });
 }
@@ -240,6 +243,279 @@ test("import preview exposes the NA conflict and allows explicit resolution", as
   });
   assert.equal(resolved.status, 200, await resolved.clone().text());
   assert.equal((await resolved.json() as any).status, "resolved");
+});
+
+test("campaign identity survives non-calendar multi-period budget planning with exact minor units", async () => {
+  const [segment] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "segment")).limit(1);
+  const [persona] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "persona")).limit(1);
+  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  assert.ok(segment && persona && product);
+
+  const calendarResponse = await api("/fiscal-calendars", undefined, {
+    method: "POST",
+    body: JSON.stringify({ stableKey: `TEST_CAL_${crypto.randomUUID()}`, name: "February fiscal year" }),
+  });
+  assert.equal(calendarResponse.status, 201, await calendarResponse.clone().text());
+  const calendar = await calendarResponse.json() as any;
+  const snapshotResponse = await api(`/fiscal-calendars/${calendar.id}/snapshots`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      version: 1,
+      rules: { fiscalYearStarts: "02-01" },
+      periods: [
+        { stableKey: "FY30-P01", fiscalYear: "FY2030", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2030-02-01", endDate: "2030-03-31" },
+        { stableKey: "FY30-P02", fiscalYear: "FY2030", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2030-04-01", endDate: "2030-04-30" },
+      ],
+    }),
+  });
+  assert.equal(snapshotResponse.status, 201, await snapshotResponse.clone().text());
+  const snapshot = await snapshotResponse.json() as any;
+  const activeSnapshot = await api(`/fiscal-calendars/${calendar.id}/active-snapshot`);
+  assert.equal(activeSnapshot.status, 200, await activeSnapshot.clone().text());
+  assert.deepEqual((await activeSnapshot.json() as any).periods.map((period: any) => period.stableKey), ["FY30-P01", "FY30-P02"]);
+
+  const campaignResponse = await api("/campaigns", undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      name: `Portfolio visibility ${crypto.randomUUID()}`,
+      campaignType: "integrated",
+      relationshipType: "new",
+      objective: "Create qualified demand",
+      customerNeed: "Understand total portfolio exposure",
+      desiredAction: "Request a consultation",
+      startDate: "2030-02-01",
+      endDate: "2030-04-30",
+      deliverySummary: "Integrated email and event delivery",
+    }),
+  });
+  assert.equal(campaignResponse.status, 201, await campaignResponse.clone().text());
+  const campaign = await campaignResponse.json() as any;
+
+  const audience = await api(`/campaigns/${campaign.campaignKey}/audiences`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({ selections: [
+      { dimension: "segment_family", governedValueId: segment.id, isPrimary: true, estimatedAudienceCount: 2500 },
+      { dimension: "persona", governedValueId: persona.id, isPrimary: true, rawRepresentativeTitle: "Asset Owner CIO" },
+    ] }),
+  });
+  assert.equal(audience.status, 200, await audience.clone().text());
+  const products = await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({ associations: [
+      { productValueId: product.id, role: "primary_solution", isPrimary: true },
+    ] }),
+  });
+  assert.equal(products.status, 200, await products.clone().text());
+
+  const activityResponse = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      name: "Asset Owner roundtable",
+      deliveryStartDate: "2030-03-15",
+      deliveryEndDate: "2030-04-15",
+      accountingDate: "2030-04-05",
+      authoritativeCostMinor: "3001",
+      currency: "USD",
+      productValueIds: [product.id],
+    }),
+  });
+  assert.equal(activityResponse.status, 201, await activityResponse.clone().text());
+  const activity = await activityResponse.json() as any;
+  assert.deepEqual(activity.productValueIds, [product.id]);
+  const activityUpdate = await api(`/activities/${activity.id}`, undefined, {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: "Asset Owner executive roundtable",
+      deliveryStartDate: "2030-03-15",
+      deliveryEndDate: "2030-04-15",
+      accountingDate: "2030-04-05",
+      authoritativeCostMinor: "3001",
+      currency: "USD",
+      productValueIds: [product.id],
+      reason: "Confirmed executive format",
+    }),
+  });
+  assert.equal(activityUpdate.status, 200, await activityUpdate.clone().text());
+
+  const costResponse = await api(`/campaigns/${campaign.campaignKey}/costs`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      description: "Shared creative and media",
+      authoritativeAmountMinor: "10001",
+      currency: "USD",
+    }),
+  });
+  assert.equal(costResponse.status, 201, await costResponse.clone().text());
+  const cost = await costResponse.json() as any;
+  const invalidDimensions = await api(`/costs/${cost.id}/dimensions`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({ allocations: [
+      { dimension: "product", dimensionKey: product.id, allocationBasisPoints: 9999 },
+    ] }),
+  });
+  assert.equal(invalidDimensions.status, 400);
+  const dimensions = await api(`/costs/${cost.id}/dimensions`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({ allocations: [
+      { dimension: "product", dimensionKey: product.id, allocationBasisPoints: 10000 },
+    ] }),
+  });
+  assert.equal(dimensions.status, 200, await dimensions.clone().text());
+  assert.equal((await dimensions.json() as any[]).reduce((sum, item) => sum + item.allocationBasisPoints, 0), 10000);
+
+  const budget = await api(`/campaigns/${campaign.campaignKey}/budget`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({
+      fiscalCalendarSnapshotId: snapshot.id,
+      requestedMinor: "10001",
+      approvedMinor: "10001",
+      currency: "USD",
+      currencyMinorUnits: 2,
+      budgetOwner: "Demand Generation",
+      costCenter: "MKT-100",
+      fundingSource: "Annual plan",
+      allocationMethod: "even",
+    }),
+  });
+  assert.equal(budget.status, 200, await budget.clone().text());
+  const generated = await api(`/campaigns/${campaign.campaignKey}/planning-periods/generate`, undefined, {
+    method: "POST",
+    body: JSON.stringify({ method: "even" }),
+  });
+  assert.equal(generated.status, 200, await generated.clone().text());
+  const periods = await generated.json() as any[];
+  assert.equal(periods.length, 2);
+  assert.equal(periods.reduce((sum, period) => sum + BigInt(period.approvedMinor), 0n), 10001n);
+  assert.equal(new Set(periods.map((period) => period.campaignKey)).size, 1);
+  assert.equal(periods[0]!.campaignKey, campaign.campaignKey);
+  const splitActivity = await api(`/activities/${activity.id}/period-allocations`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({ method: "daily" }),
+  });
+  assert.equal(splitActivity.status, 200, await splitActivity.clone().text());
+  const detail = await api(`/campaigns/${campaign.campaignKey}`);
+  assert.equal(detail.status, 200, await detail.clone().text());
+  const detailBody = await detail.json() as any;
+  assert.equal(detailBody.activities.length, 1);
+  assert.equal(detailBody.activities[0].periodAllocations.reduce((sum: bigint, allocation: any) => sum + BigInt(allocation.amountMinor), 0n), 3001n);
+  assert.equal(detailBody.activities[0].productValueIds[0], product.id);
+  assert.equal(detailBody.costs.length, 1);
+  assert.equal(detailBody.costs[0].authoritativeAmountMinor, "10001");
+  assert.equal(detailBody.costs[0].dimensions[0].allocationBasisPoints, 10000);
+
+  const close = await api(`/planning-periods/${periods[0]!.id}/close`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      reason: "Quarter reconciliation approved",
+      varianceExplanation: "No variance",
+      unusedBudgetTreatment: "expire",
+    }),
+  });
+  assert.equal(close.status, 200, await close.clone().text());
+  await assert.rejects(
+    db.update(campaignPlanningPeriodsTable)
+      .set({ plannedMinor: "99999" })
+      .where(eq(campaignPlanningPeriodsTable.id, periods[0]!.id)),
+    (error: any) => /Closed campaign planning periods are locked|Reopening cannot alter immutable closed-period values/
+      .test(String(error?.cause?.message ?? error?.message)),
+  );
+  await assert.rejects(
+    db.update(campaignPlanningPeriodsTable)
+      .set({ status: "open" })
+      .where(eq(campaignPlanningPeriodsTable.id, periods[0]!.id)),
+    (error: any) => /requires an immutable approval record/
+      .test(String(error?.cause?.message ?? error?.message)),
+  );
+  const lockedCost = await api(`/costs/${cost.id}`, undefined, {
+    method: "PATCH",
+    body: JSON.stringify({
+      description: "Attempted closed-period change",
+      authoritativeAmountMinor: "10002",
+      currency: "USD",
+      reason: "Should be rejected",
+    }),
+  });
+  assert.equal(lockedCost.status, 423);
+  const newLockedCost = await api(`/campaigns/${campaign.campaignKey}/costs`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      description: "Attempted cost creation after close",
+      authoritativeAmountMinor: "100",
+      currency: "USD",
+    }),
+  });
+  assert.equal(newLockedCost.status, 423);
+  const reopened = await api(`/planning-periods/${periods[0]!.id}/reopen`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      reason: "Approved correction",
+      approvedBy: "Finance administrator",
+    }),
+  });
+  assert.equal(reopened.status, 200, await reopened.clone().text());
+
+  const ready = await api(`/campaigns/${campaign.campaignKey}/readiness`);
+  assert.equal(ready.status, 200);
+  assert.equal((await ready.json() as any).ready, true);
+});
+
+test("evergreen planning uses review date and includes leap-day fiscal boundaries", async () => {
+  const calendarResponse = await api("/fiscal-calendars", undefined, {
+    method: "POST",
+    body: JSON.stringify({ stableKey: `TEST_LEAP_${crypto.randomUUID()}`, name: "Leap-day fiscal calendar" }),
+  });
+  assert.equal(calendarResponse.status, 201, await calendarResponse.clone().text());
+  const calendar = await calendarResponse.json() as any;
+  const snapshotResponse = await api(`/fiscal-calendars/${calendar.id}/snapshots`, undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      version: 1,
+      rules: { fiscalYearStarts: "02-01", leapDayExplicit: true },
+      periods: [
+        { stableKey: "FY32-P01", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2032-02-28", endDate: "2032-02-29" },
+        { stableKey: "FY32-P02", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2032-03-01", endDate: "2032-03-31" },
+      ],
+    }),
+  });
+  assert.equal(snapshotResponse.status, 201, await snapshotResponse.clone().text());
+  const snapshot = await snapshotResponse.json() as any;
+  const campaignResponse = await api("/campaigns", undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      name: `Evergreen leap campaign ${crypto.randomUUID()}`,
+      campaignType: "nurture",
+      relationshipType: "new",
+      startDate: "2032-02-28",
+      isEvergreen: true,
+      reviewDate: "2032-03-01",
+    }),
+  });
+  assert.equal(campaignResponse.status, 201, await campaignResponse.clone().text());
+  const campaign = await campaignResponse.json() as any;
+  const budget = await api(`/campaigns/${campaign.campaignKey}/budget`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({
+      fiscalCalendarSnapshotId: snapshot.id,
+      requestedMinor: "3",
+      approvedMinor: "3",
+      currency: "USD",
+      currencyMinorUnits: 2,
+      budgetOwner: "Lifecycle",
+      costCenter: "MKT-LEAP",
+      fundingSource: "Annual plan",
+      allocationMethod: "monthly",
+    }),
+  });
+  assert.equal(budget.status, 200, await budget.clone().text());
+  const generated = await api(`/campaigns/${campaign.campaignKey}/planning-periods/generate`, undefined, {
+    method: "POST",
+    body: JSON.stringify({ method: "monthly" }),
+  });
+  assert.equal(generated.status, 200, await generated.clone().text());
+  const periods = await generated.json() as any[];
+  assert.equal(periods.length, 2);
+  assert.equal(periods.reduce((sum, period) => sum + BigInt(period.approvedMinor), 0n), 3n);
+  assert.ok(periods.some((period) => period.readableName.includes("FY2032 Q1")));
 });
 
 test.after(async () => {

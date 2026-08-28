@@ -40,15 +40,15 @@ A greenfield, segment-led workspace for governing integrated Sales and Marketing
 - OpenAPI is the contract source of truth; regenerate clients and validators after every contract change.
 - Taxonomy administration is intentionally public, including create, update, lifecycle, association, review-request, and import operations.
 - Public taxonomy audit records use the actor label `Public user`; authentication is not required for taxonomy routes.
-- Campaign identity will be an enduring non-semantic key independent of names and fiscal periods.
+- Campaign identity is an enduring generated UUID independent of names and fiscal periods.
 - Referenced taxonomy values are retired or superseded, not deleted.
 - Audit and governance events are append-only.
 - Preserved-source imports stage real parsed candidates and structured conflicts; they never auto-activate values.
-- Live business integrations and campaign workflows are deferred.
+- Campaign Registry, setup drafts, normalized plans, and fiscal budgeting are available through the API; live business integrations remain deferred.
 
 ## Product
 
-The current phase provides the application shell and complete database-driven Taxonomy Administration. Campaign Registry, Campaign Setup, budgeting, reporting, and live integrations are intentionally deferred.
+The current backend phase provides Taxonomy Administration, Campaign Registry and guided-setup persistence, normalized audience/product planning, and multi-year fiscal budgeting. The existing frontend remains taxonomy-focused. Reporting and live integrations are deferred.
 
 ## User preferences
 

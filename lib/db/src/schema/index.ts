@@ -21,3 +21,6 @@ export * from "./taxonomy-values";
 export * from "./foundation-activity";
 export * from "./auth";
 export * from "./taxonomy-governance";
+export * from "./campaign-registry";
+export * from "./campaign-planning";
+export * from "./campaign-budgeting";

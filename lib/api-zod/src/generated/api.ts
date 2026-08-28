@@ -477,3 +477,1034 @@ export const ResolveTaxonomyImportConflictResponse = zod.object({
 })
 
 
+export const ListCampaignsQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional()
+})
+
+export const ListCampaignsResponseItem = zod.object({
+  "campaignKey": zod.string().describe('Enduring non-semantic identity; never derived from names or fiscal periods'),
+  "name": zod.string(),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted', 'approved', 'archived']),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean(),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()),
+  "issueSummary": zod.array(zod.string()),
+  "submittedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCampaignsResponse = zod.array(ListCampaignsResponseItem)
+
+
+
+export const createCampaignBodyIsEvergreenDefault = false;
+
+export const CreateCampaignBody = zod.object({
+  "name": zod.string().min(1),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean().default(createCampaignBodyIsEvergreenDefault),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+export const CreateCampaignResponse = zod.object({
+  "campaignKey": zod.string().describe('Enduring non-semantic identity; never derived from names or fiscal periods'),
+  "name": zod.string(),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted', 'approved', 'archived']),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean(),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()),
+  "issueSummary": zod.array(zod.string()),
+  "submittedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const GetCampaignParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const getCampaignResponseTwoAudiencesItemOneEstimatedAudienceCountMin = 0;
+
+
+export const getCampaignResponseTwoActivitiesItemOneOneAuthoritativeCostMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoActivitiesItemOneOneCurrencyMin = 3;
+export const getCampaignResponseTwoActivitiesItemOneOneCurrencyMax = 3;
+
+export const getCampaignResponseTwoActivitiesItemTwoPeriodAllocationsItemAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+
+export const getCampaignResponseTwoCostsItemOneOneAuthoritativeAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoCostsItemOneOneCurrencyMin = 3;
+export const getCampaignResponseTwoCostsItemOneOneCurrencyMax = 3;
+
+
+export const getCampaignResponseTwoCostsItemTwoDimensionsItemOneAllocationBasisPointsMin = 0;
+export const getCampaignResponseTwoCostsItemTwoDimensionsItemOneAllocationBasisPointsMax = 10000;
+
+export const getCampaignResponseTwoPlanningPeriodsItemRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemPlannedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemCommittedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemActualMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemForecastMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemRemainingMinorRegExp = new RegExp('^-?[0-9]+$');
+export const getCampaignResponseTwoPlanningPeriodsItemVarianceMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const GetCampaignResponse = zod.object({
+  "campaignKey": zod.string().describe('Enduring non-semantic identity; never derived from names or fiscal periods'),
+  "name": zod.string(),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted', 'approved', 'archived']),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean(),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()),
+  "issueSummary": zod.array(zod.string()),
+  "submittedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "audiences": zod.array(zod.object({
+  "dimension": zod.enum(['segment_family', 'subsegment', 'account_size_tier', 'account_priority', 'relationship', 'buying_group_function', 'persona', 'seniority', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'region', 'country', 'language', 'journey_stage']),
+  "governedValueId": zod.string().nullish(),
+  "unresolvedLabel": zod.string().nullish(),
+  "isPrimary": zod.boolean(),
+  "rawRepresentativeTitle": zod.string().nullish(),
+  "estimatedAudienceCount": zod.number().min(getCampaignResponseTwoAudiencesItemOneEstimatedAudienceCountMin).nullish(),
+  "measurementBasis": zod.string().nullish()
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "warningCodes": zod.array(zod.string()),
+  "createdAt": zod.coerce.date()
+}))),
+  "products": zod.array(zod.object({
+  "productValueId": zod.string(),
+  "role": zod.enum(['primary_solution', 'supporting_capability', 'cross_sell_offer', 'upsell_offer', 'proof_point', 'content_data_source', 'cta_destination', 'internal_relevance']),
+  "isPrimary": zod.boolean()
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+}))),
+  "activities": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "deliveryStartDate": zod.coerce.date(),
+  "deliveryEndDate": zod.coerce.date(),
+  "accountingDate": zod.coerce.date().nullish(),
+  "channelValueId": zod.string().nullish(),
+  "authoritativeCostMinor": zod.string().regex(getCampaignResponseTwoActivitiesItemOneOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(getCampaignResponseTwoActivitiesItemOneOneCurrencyMin).max(getCampaignResponseTwoActivitiesItemOneOneCurrencyMax),
+  "productValueIds": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+})).and(zod.object({
+  "periodAllocations": zod.array(zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "campaignPlanningPeriodId": zod.string(),
+  "allocationMethod": zod.enum(['invoice_date', 'daily', 'monthly', 'custom']),
+  "amountMinor": zod.string().regex(getCampaignResponseTwoActivitiesItemTwoPeriodAllocationsItemAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "accountingDate": zod.coerce.date().nullish()
+}))
+}))),
+  "costs": zod.array(zod.object({
+  "description": zod.string().min(1),
+  "authoritativeAmountMinor": zod.string().regex(getCampaignResponseTwoCostsItemOneOneAuthoritativeAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(getCampaignResponseTwoCostsItemOneOneCurrencyMin).max(getCampaignResponseTwoCostsItemOneOneCurrencyMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+})).and(zod.object({
+  "dimensions": zod.array(zod.object({
+  "dimension": zod.enum(['product', 'segment', 'region', 'channel']),
+  "dimensionKey": zod.string().min(1),
+  "allocationBasisPoints": zod.number().min(getCampaignResponseTwoCostsItemTwoDimensionsItemOneAllocationBasisPointsMin).max(getCampaignResponseTwoCostsItemTwoDimensionsItemOneAllocationBasisPointsMax),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "costId": zod.string()
+})))
+}))),
+  "planningPeriods": zod.array(zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "campaignKey": zod.string(),
+  "fiscalPeriodId": zod.string(),
+  "readableName": zod.string(),
+  "requestedMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "plannedMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemPlannedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "committedMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemCommittedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "actualMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemActualMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "forecastMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemForecastMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "remainingMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemRemainingMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemVarianceMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceExplanation": zod.string().nullish(),
+  "unusedBudgetTreatment": zod.union([zod.literal('expire'),zod.literal('carry_forward'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish(),
+  "reopenedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number()
+})),
+  "history": zod.array(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "action": zod.string(),
+  "actorId": zod.string(),
+  "reason": zod.string(),
+  "snapshot": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.coerce.date()
+}))
+}))
+
+
+export const UpdateCampaignParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+
+export const updateCampaignBodyOneIsEvergreenDefault = false;
+
+
+
+export const UpdateCampaignBody = zod.object({
+  "name": zod.string().min(1),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean().default(updateCampaignBodyOneIsEvergreenDefault),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "rowVersion": zod.number().min(1),
+  "reason": zod.string().min(1)
+}))
+
+export const UpdateCampaignResponse = zod.object({
+  "campaignKey": zod.string().describe('Enduring non-semantic identity; never derived from names or fiscal periods'),
+  "name": zod.string(),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted', 'approved', 'archived']),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean(),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()),
+  "issueSummary": zod.array(zod.string()),
+  "submittedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const ArchiveCampaignParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const ArchiveCampaignResponse = zod.void()
+
+
+export const GetCampaignReadinessParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const GetCampaignReadinessResponse = zod.object({
+  "ready": zod.boolean(),
+  "issues": zod.array(zod.string()),
+  "probableDuplicates": zod.array(zod.object({
+  "campaignKey": zod.string().describe('Enduring non-semantic identity; never derived from names or fiscal periods'),
+  "name": zod.string(),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted', 'approved', 'archived']),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean(),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()),
+  "issueSummary": zod.array(zod.string()),
+  "submittedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+export const SubmitCampaignParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+
+
+
+export const SubmitCampaignBody = zod.object({
+  "reason": zod.string().min(1)
+})
+
+export const SubmitCampaignResponse = zod.object({
+  "campaignKey": zod.string().describe('Enduring non-semantic identity; never derived from names or fiscal periods'),
+  "name": zod.string(),
+  "campaignType": zod.enum(['integrated', 'activation', 'nurture', 'event', 'research_content', 'paid_media', 'sales_cadence', 'client_expansion', 'newsletter', 'in_app', 'approved_other']),
+  "relationshipType": zod.enum(['new', 'wave', 'activity', 'copy']),
+  "parentCampaignKey": zod.string().nullish(),
+  "copiedFromCampaignKey": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted', 'approved', 'archived']),
+  "objective": zod.string().nullish(),
+  "customerNeed": zod.string().nullish(),
+  "desiredAction": zod.string().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "isEvergreen": zod.boolean(),
+  "reviewDate": zod.coerce.date().nullish(),
+  "deliverySummary": zod.string().nullish(),
+  "setupData": zod.record(zod.string(), zod.unknown()),
+  "issueSummary": zod.array(zod.string()),
+  "submittedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const ReplaceCampaignAudiencesParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const replaceCampaignAudiencesBodySelectionsItemEstimatedAudienceCountMin = 0;
+
+
+
+export const ReplaceCampaignAudiencesBody = zod.object({
+  "selections": zod.array(zod.object({
+  "dimension": zod.enum(['segment_family', 'subsegment', 'account_size_tier', 'account_priority', 'relationship', 'buying_group_function', 'persona', 'seniority', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'region', 'country', 'language', 'journey_stage']),
+  "governedValueId": zod.string().nullish(),
+  "unresolvedLabel": zod.string().nullish(),
+  "isPrimary": zod.boolean(),
+  "rawRepresentativeTitle": zod.string().nullish(),
+  "estimatedAudienceCount": zod.number().min(replaceCampaignAudiencesBodySelectionsItemEstimatedAudienceCountMin).nullish(),
+  "measurementBasis": zod.string().nullish()
+}))
+})
+
+export const replaceCampaignAudiencesResponseOneEstimatedAudienceCountMin = 0;
+
+
+
+export const ReplaceCampaignAudiencesResponseItem = zod.object({
+  "dimension": zod.enum(['segment_family', 'subsegment', 'account_size_tier', 'account_priority', 'relationship', 'buying_group_function', 'persona', 'seniority', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'region', 'country', 'language', 'journey_stage']),
+  "governedValueId": zod.string().nullish(),
+  "unresolvedLabel": zod.string().nullish(),
+  "isPrimary": zod.boolean(),
+  "rawRepresentativeTitle": zod.string().nullish(),
+  "estimatedAudienceCount": zod.number().min(replaceCampaignAudiencesResponseOneEstimatedAudienceCountMin).nullish(),
+  "measurementBasis": zod.string().nullish()
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "warningCodes": zod.array(zod.string()),
+  "createdAt": zod.coerce.date()
+}))
+export const ReplaceCampaignAudiencesResponse = zod.array(ReplaceCampaignAudiencesResponseItem)
+
+
+export const ReplaceCampaignProductsParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const ReplaceCampaignProductsBody = zod.object({
+  "associations": zod.array(zod.object({
+  "productValueId": zod.string(),
+  "role": zod.enum(['primary_solution', 'supporting_capability', 'cross_sell_offer', 'upsell_offer', 'proof_point', 'content_data_source', 'cta_destination', 'internal_relevance']),
+  "isPrimary": zod.boolean()
+}))
+})
+
+export const ReplaceCampaignProductsResponseItem = zod.object({
+  "productValueId": zod.string(),
+  "role": zod.enum(['primary_solution', 'supporting_capability', 'cross_sell_offer', 'upsell_offer', 'proof_point', 'content_data_source', 'cta_destination', 'internal_relevance']),
+  "isPrimary": zod.boolean()
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+export const ReplaceCampaignProductsResponse = zod.array(ReplaceCampaignProductsResponseItem)
+
+
+export const CreateCampaignActivityParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+
+export const createCampaignActivityBodyAuthoritativeCostMinorRegExp = new RegExp('^-?[0-9]+$');
+export const createCampaignActivityBodyCurrencyMin = 3;
+export const createCampaignActivityBodyCurrencyMax = 3;
+
+
+
+export const CreateCampaignActivityBody = zod.object({
+  "name": zod.string().min(1),
+  "deliveryStartDate": zod.coerce.date(),
+  "deliveryEndDate": zod.coerce.date(),
+  "accountingDate": zod.coerce.date().nullish(),
+  "channelValueId": zod.string().nullish(),
+  "authoritativeCostMinor": zod.string().regex(createCampaignActivityBodyAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(createCampaignActivityBodyCurrencyMin).max(createCampaignActivityBodyCurrencyMax),
+  "productValueIds": zod.array(zod.string())
+})
+
+
+export const createCampaignActivityResponseOneAuthoritativeCostMinorRegExp = new RegExp('^-?[0-9]+$');
+export const createCampaignActivityResponseOneCurrencyMin = 3;
+export const createCampaignActivityResponseOneCurrencyMax = 3;
+
+
+
+export const CreateCampaignActivityResponse = zod.object({
+  "name": zod.string().min(1),
+  "deliveryStartDate": zod.coerce.date(),
+  "deliveryEndDate": zod.coerce.date(),
+  "accountingDate": zod.coerce.date().nullish(),
+  "channelValueId": zod.string().nullish(),
+  "authoritativeCostMinor": zod.string().regex(createCampaignActivityResponseOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(createCampaignActivityResponseOneCurrencyMin).max(createCampaignActivityResponseOneCurrencyMax),
+  "productValueIds": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+
+
+export const UpdateCampaignActivityParams = zod.object({
+  "activityId": zod.coerce.string()
+})
+
+
+export const updateCampaignActivityBodyOneAuthoritativeCostMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignActivityBodyOneCurrencyMin = 3;
+export const updateCampaignActivityBodyOneCurrencyMax = 3;
+
+
+
+
+export const UpdateCampaignActivityBody = zod.object({
+  "name": zod.string().min(1),
+  "deliveryStartDate": zod.coerce.date(),
+  "deliveryEndDate": zod.coerce.date(),
+  "accountingDate": zod.coerce.date().nullish(),
+  "channelValueId": zod.string().nullish(),
+  "authoritativeCostMinor": zod.string().regex(updateCampaignActivityBodyOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(updateCampaignActivityBodyOneCurrencyMin).max(updateCampaignActivityBodyOneCurrencyMax),
+  "productValueIds": zod.array(zod.string())
+}).and(zod.object({
+  "reason": zod.string().min(1)
+}))
+
+
+export const updateCampaignActivityResponseOneAuthoritativeCostMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignActivityResponseOneCurrencyMin = 3;
+export const updateCampaignActivityResponseOneCurrencyMax = 3;
+
+
+
+export const UpdateCampaignActivityResponse = zod.object({
+  "name": zod.string().min(1),
+  "deliveryStartDate": zod.coerce.date(),
+  "deliveryEndDate": zod.coerce.date(),
+  "accountingDate": zod.coerce.date().nullish(),
+  "channelValueId": zod.string().nullish(),
+  "authoritativeCostMinor": zod.string().regex(updateCampaignActivityResponseOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(updateCampaignActivityResponseOneCurrencyMin).max(updateCampaignActivityResponseOneCurrencyMax),
+  "productValueIds": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+
+
+export const CreateCampaignCostParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+
+export const createCampaignCostBodyAuthoritativeAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+export const createCampaignCostBodyCurrencyMin = 3;
+export const createCampaignCostBodyCurrencyMax = 3;
+
+
+
+export const CreateCampaignCostBody = zod.object({
+  "description": zod.string().min(1),
+  "authoritativeAmountMinor": zod.string().regex(createCampaignCostBodyAuthoritativeAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(createCampaignCostBodyCurrencyMin).max(createCampaignCostBodyCurrencyMax)
+})
+
+
+export const createCampaignCostResponseOneAuthoritativeAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+export const createCampaignCostResponseOneCurrencyMin = 3;
+export const createCampaignCostResponseOneCurrencyMax = 3;
+
+
+
+export const CreateCampaignCostResponse = zod.object({
+  "description": zod.string().min(1),
+  "authoritativeAmountMinor": zod.string().regex(createCampaignCostResponseOneAuthoritativeAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(createCampaignCostResponseOneCurrencyMin).max(createCampaignCostResponseOneCurrencyMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+
+
+export const UpdateCampaignCostParams = zod.object({
+  "costId": zod.coerce.string()
+})
+
+
+export const updateCampaignCostBodyOneAuthoritativeAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignCostBodyOneCurrencyMin = 3;
+export const updateCampaignCostBodyOneCurrencyMax = 3;
+
+
+
+
+export const UpdateCampaignCostBody = zod.object({
+  "description": zod.string().min(1),
+  "authoritativeAmountMinor": zod.string().regex(updateCampaignCostBodyOneAuthoritativeAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(updateCampaignCostBodyOneCurrencyMin).max(updateCampaignCostBodyOneCurrencyMax)
+}).and(zod.object({
+  "reason": zod.string().min(1)
+}))
+
+
+export const updateCampaignCostResponseOneAuthoritativeAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignCostResponseOneCurrencyMin = 3;
+export const updateCampaignCostResponseOneCurrencyMax = 3;
+
+
+
+export const UpdateCampaignCostResponse = zod.object({
+  "description": zod.string().min(1),
+  "authoritativeAmountMinor": zod.string().regex(updateCampaignCostResponseOneAuthoritativeAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(updateCampaignCostResponseOneCurrencyMin).max(updateCampaignCostResponseOneCurrencyMax)
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+
+
+export const ReplaceCampaignCostDimensionsParams = zod.object({
+  "costId": zod.coerce.string()
+})
+
+
+export const replaceCampaignCostDimensionsBodyAllocationsItemAllocationBasisPointsMin = 0;
+export const replaceCampaignCostDimensionsBodyAllocationsItemAllocationBasisPointsMax = 10000;
+
+
+
+
+export const ReplaceCampaignCostDimensionsBody = zod.object({
+  "allocations": zod.array(zod.object({
+  "dimension": zod.enum(['product', 'segment', 'region', 'channel']),
+  "dimensionKey": zod.string().min(1),
+  "allocationBasisPoints": zod.number().min(replaceCampaignCostDimensionsBodyAllocationsItemAllocationBasisPointsMin).max(replaceCampaignCostDimensionsBodyAllocationsItemAllocationBasisPointsMax),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
+})).min(1)
+})
+
+
+export const replaceCampaignCostDimensionsResponseOneAllocationBasisPointsMin = 0;
+export const replaceCampaignCostDimensionsResponseOneAllocationBasisPointsMax = 10000;
+
+
+
+export const ReplaceCampaignCostDimensionsResponseItem = zod.object({
+  "dimension": zod.enum(['product', 'segment', 'region', 'channel']),
+  "dimensionKey": zod.string().min(1),
+  "allocationBasisPoints": zod.number().min(replaceCampaignCostDimensionsResponseOneAllocationBasisPointsMin).max(replaceCampaignCostDimensionsResponseOneAllocationBasisPointsMax),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "id": zod.string(),
+  "costId": zod.string()
+}))
+export const ReplaceCampaignCostDimensionsResponse = zod.array(ReplaceCampaignCostDimensionsResponseItem)
+
+
+export const ListFiscalCalendarsResponseItem = zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "name": zod.string(),
+  "activeSnapshotId": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListFiscalCalendarsResponse = zod.array(ListFiscalCalendarsResponseItem)
+
+
+export const createFiscalCalendarBodyStableKeyMin = 3;
+
+
+
+
+export const CreateFiscalCalendarBody = zod.object({
+  "stableKey": zod.string().min(createFiscalCalendarBodyStableKeyMin),
+  "name": zod.string().min(1)
+})
+
+export const CreateFiscalCalendarResponse = zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "name": zod.string(),
+  "activeSnapshotId": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+export const PublishFiscalCalendarSnapshotParams = zod.object({
+  "calendarId": zod.coerce.string()
+})
+
+
+
+
+
+export const PublishFiscalCalendarSnapshotBody = zod.object({
+  "version": zod.number().min(1),
+  "rules": zod.record(zod.string(), zod.unknown()),
+  "periods": zod.array(zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+})).min(1)
+})
+
+export const PublishFiscalCalendarSnapshotResponse = zod.object({
+  "id": zod.string(),
+  "fiscalCalendarId": zod.string(),
+  "version": zod.number(),
+  "rules": zod.record(zod.string(), zod.unknown()),
+  "isPublished": zod.boolean(),
+  "createdBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "periods": zod.array(zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+}).and(zod.object({
+  "id": zod.string(),
+  "snapshotId": zod.string(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish()
+})))
+})
+
+
+export const GetActiveFiscalCalendarSnapshotParams = zod.object({
+  "calendarId": zod.coerce.string()
+})
+
+export const GetActiveFiscalCalendarSnapshotResponse = zod.object({
+  "id": zod.string(),
+  "fiscalCalendarId": zod.string(),
+  "version": zod.number(),
+  "rules": zod.record(zod.string(), zod.unknown()),
+  "isPublished": zod.boolean(),
+  "createdBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "periods": zod.array(zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date()
+}).and(zod.object({
+  "id": zod.string(),
+  "snapshotId": zod.string(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish()
+})))
+})
+
+
+export const SetCampaignBudgetParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const setCampaignBudgetBodyRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const setCampaignBudgetBodyApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const setCampaignBudgetBodyCurrencyMin = 3;
+export const setCampaignBudgetBodyCurrencyMax = 3;
+
+export const setCampaignBudgetBodyCurrencyMinorUnitsMin = 0;
+export const setCampaignBudgetBodyCurrencyMinorUnitsMax = 4;
+
+
+
+
+
+
+export const SetCampaignBudgetBody = zod.object({
+  "fiscalCalendarSnapshotId": zod.string(),
+  "requestedMinor": zod.string().regex(setCampaignBudgetBodyRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(setCampaignBudgetBodyApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(setCampaignBudgetBodyCurrencyMin).max(setCampaignBudgetBodyCurrencyMax),
+  "currencyMinorUnits": zod.number().min(setCampaignBudgetBodyCurrencyMinorUnitsMin).max(setCampaignBudgetBodyCurrencyMinorUnitsMax),
+  "budgetOwner": zod.string().min(1),
+  "costCenter": zod.string().min(1),
+  "fundingSource": zod.string().min(1),
+  "allocationMethod": zod.enum(['even', 'monthly', 'quarterly', 'activity', 'channel', 'custom'])
+})
+
+export const setCampaignBudgetResponseOneRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const setCampaignBudgetResponseOneApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const setCampaignBudgetResponseOneCurrencyMin = 3;
+export const setCampaignBudgetResponseOneCurrencyMax = 3;
+
+export const setCampaignBudgetResponseOneCurrencyMinorUnitsMin = 0;
+export const setCampaignBudgetResponseOneCurrencyMinorUnitsMax = 4;
+
+
+
+
+
+
+export const SetCampaignBudgetResponse = zod.object({
+  "fiscalCalendarSnapshotId": zod.string(),
+  "requestedMinor": zod.string().regex(setCampaignBudgetResponseOneRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(setCampaignBudgetResponseOneApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "currency": zod.string().min(setCampaignBudgetResponseOneCurrencyMin).max(setCampaignBudgetResponseOneCurrencyMax),
+  "currencyMinorUnits": zod.number().min(setCampaignBudgetResponseOneCurrencyMinorUnitsMin).max(setCampaignBudgetResponseOneCurrencyMinorUnitsMax),
+  "budgetOwner": zod.string().min(1),
+  "costCenter": zod.string().min(1),
+  "fundingSource": zod.string().min(1),
+  "allocationMethod": zod.enum(['even', 'monthly', 'quarterly', 'activity', 'channel', 'custom'])
+}).and(zod.object({
+  "id": zod.string(),
+  "campaignKey": zod.string(),
+  "rowVersion": zod.number(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const GenerateCampaignPlanningPeriodsParams = zod.object({
+  "campaignKey": zod.coerce.string()
+})
+
+export const generateCampaignPlanningPeriodsBodyCustomAllocationsItemAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsBodyAllocationWeightsItemAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const GenerateCampaignPlanningPeriodsBody = zod.object({
+  "method": zod.enum(['even', 'monthly', 'quarterly', 'activity', 'channel', 'custom']),
+  "customAllocations": zod.array(zod.object({
+  "key": zod.string(),
+  "amountMinor": zod.string().regex(generateCampaignPlanningPeriodsBodyCustomAllocationsItemAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point')
+})).optional(),
+  "allocationWeights": zod.array(zod.object({
+  "key": zod.string(),
+  "amountMinor": zod.string().regex(generateCampaignPlanningPeriodsBodyAllocationWeightsItemAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point')
+})).optional().describe('Exact nonnegative period weights used for activity- or channel-led planning')
+})
+
+export const generateCampaignPlanningPeriodsResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponseCommittedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponseActualMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponseForecastMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponseRemainingMinorRegExp = new RegExp('^-?[0-9]+$');
+export const generateCampaignPlanningPeriodsResponseVarianceMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const GenerateCampaignPlanningPeriodsResponseItem = zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "campaignKey": zod.string(),
+  "fiscalPeriodId": zod.string(),
+  "readableName": zod.string(),
+  "requestedMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "plannedMinor": zod.string().regex(generateCampaignPlanningPeriodsResponsePlannedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "committedMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseCommittedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "actualMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseActualMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "forecastMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseForecastMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "remainingMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseRemainingMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseVarianceMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceExplanation": zod.string().nullish(),
+  "unusedBudgetTreatment": zod.union([zod.literal('expire'),zod.literal('carry_forward'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish(),
+  "reopenedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number()
+})
+export const GenerateCampaignPlanningPeriodsResponse = zod.array(GenerateCampaignPlanningPeriodsResponseItem)
+
+
+export const UpdateCampaignPlanningPeriodParams = zod.object({
+  "planningPeriodId": zod.coerce.string()
+})
+
+export const updateCampaignPlanningPeriodBodyPlannedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodBodyCommittedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodBodyActualMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodBodyForecastMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+
+export const UpdateCampaignPlanningPeriodBody = zod.object({
+  "plannedMinor": zod.string().regex(updateCampaignPlanningPeriodBodyPlannedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "committedMinor": zod.string().regex(updateCampaignPlanningPeriodBodyCommittedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "actualMinor": zod.string().regex(updateCampaignPlanningPeriodBodyActualMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "forecastMinor": zod.string().regex(updateCampaignPlanningPeriodBodyForecastMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceExplanation": zod.string().nullable(),
+  "rowVersion": zod.number(),
+  "reason": zod.string().min(1)
+})
+
+export const updateCampaignPlanningPeriodResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponseCommittedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponseActualMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponseForecastMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponseRemainingMinorRegExp = new RegExp('^-?[0-9]+$');
+export const updateCampaignPlanningPeriodResponseVarianceMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const UpdateCampaignPlanningPeriodResponse = zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "campaignKey": zod.string(),
+  "fiscalPeriodId": zod.string(),
+  "readableName": zod.string(),
+  "requestedMinor": zod.string().regex(updateCampaignPlanningPeriodResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(updateCampaignPlanningPeriodResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "plannedMinor": zod.string().regex(updateCampaignPlanningPeriodResponsePlannedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "committedMinor": zod.string().regex(updateCampaignPlanningPeriodResponseCommittedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "actualMinor": zod.string().regex(updateCampaignPlanningPeriodResponseActualMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "forecastMinor": zod.string().regex(updateCampaignPlanningPeriodResponseForecastMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "remainingMinor": zod.string().regex(updateCampaignPlanningPeriodResponseRemainingMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceMinor": zod.string().regex(updateCampaignPlanningPeriodResponseVarianceMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceExplanation": zod.string().nullish(),
+  "unusedBudgetTreatment": zod.union([zod.literal('expire'),zod.literal('carry_forward'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish(),
+  "reopenedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number()
+})
+
+
+export const CloseCampaignPlanningPeriodParams = zod.object({
+  "planningPeriodId": zod.coerce.string()
+})
+
+
+
+
+
+export const CloseCampaignPlanningPeriodBody = zod.object({
+  "reason": zod.string().min(1),
+  "varianceExplanation": zod.string().min(1),
+  "unusedBudgetTreatment": zod.enum(['expire', 'carry_forward'])
+})
+
+export const closeCampaignPlanningPeriodResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponseCommittedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponseActualMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponseForecastMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponseRemainingMinorRegExp = new RegExp('^-?[0-9]+$');
+export const closeCampaignPlanningPeriodResponseVarianceMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const CloseCampaignPlanningPeriodResponse = zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "campaignKey": zod.string(),
+  "fiscalPeriodId": zod.string(),
+  "readableName": zod.string(),
+  "requestedMinor": zod.string().regex(closeCampaignPlanningPeriodResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(closeCampaignPlanningPeriodResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "plannedMinor": zod.string().regex(closeCampaignPlanningPeriodResponsePlannedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "committedMinor": zod.string().regex(closeCampaignPlanningPeriodResponseCommittedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "actualMinor": zod.string().regex(closeCampaignPlanningPeriodResponseActualMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "forecastMinor": zod.string().regex(closeCampaignPlanningPeriodResponseForecastMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "remainingMinor": zod.string().regex(closeCampaignPlanningPeriodResponseRemainingMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceMinor": zod.string().regex(closeCampaignPlanningPeriodResponseVarianceMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceExplanation": zod.string().nullish(),
+  "unusedBudgetTreatment": zod.union([zod.literal('expire'),zod.literal('carry_forward'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish(),
+  "reopenedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number()
+})
+
+
+export const ReopenCampaignPlanningPeriodParams = zod.object({
+  "planningPeriodId": zod.coerce.string()
+})
+
+
+
+
+
+export const ReopenCampaignPlanningPeriodBody = zod.object({
+  "reason": zod.string().min(1),
+  "approvedBy": zod.string().min(1)
+})
+
+export const reopenCampaignPlanningPeriodResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponseCommittedMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponseActualMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponseForecastMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponseRemainingMinorRegExp = new RegExp('^-?[0-9]+$');
+export const reopenCampaignPlanningPeriodResponseVarianceMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const ReopenCampaignPlanningPeriodResponse = zod.object({
+  "id": zod.string(),
+  "stableKey": zod.string(),
+  "campaignKey": zod.string(),
+  "fiscalPeriodId": zod.string(),
+  "readableName": zod.string(),
+  "requestedMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "approvedMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "plannedMinor": zod.string().regex(reopenCampaignPlanningPeriodResponsePlannedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "committedMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseCommittedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "actualMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseActualMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "forecastMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseForecastMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "remainingMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseRemainingMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseVarianceMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "varianceExplanation": zod.string().nullish(),
+  "unusedBudgetTreatment": zod.union([zod.literal('expire'),zod.literal('carry_forward'),zod.literal(null)]).nullish(),
+  "status": zod.enum(['open', 'closed']),
+  "closedAt": zod.coerce.date().nullish(),
+  "reopenedAt": zod.coerce.date().nullish(),
+  "rowVersion": zod.number()
+})
+
+
+export const AllocateActivityAcrossPeriodsParams = zod.object({
+  "activityId": zod.coerce.string()
+})
+
+export const allocateActivityAcrossPeriodsBodyCustomAllocationsItemAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const AllocateActivityAcrossPeriodsBody = zod.object({
+  "method": zod.enum(['invoice_date', 'daily', 'monthly', 'custom']),
+  "customAllocations": zod.array(zod.object({
+  "key": zod.string(),
+  "amountMinor": zod.string().regex(allocateActivityAcrossPeriodsBodyCustomAllocationsItemAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point')
+})).optional()
+})
+
+export const allocateActivityAcrossPeriodsResponseAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+
+
+export const AllocateActivityAcrossPeriodsResponseItem = zod.object({
+  "id": zod.string(),
+  "activityId": zod.string(),
+  "campaignPlanningPeriodId": zod.string(),
+  "allocationMethod": zod.enum(['invoice_date', 'daily', 'monthly', 'custom']),
+  "amountMinor": zod.string().regex(allocateActivityAcrossPeriodsResponseAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
+  "accountingDate": zod.coerce.date().nullish()
+})
+export const AllocateActivityAcrossPeriodsResponse = zod.array(AllocateActivityAcrossPeriodsResponseItem)
+
+

@@ -8,8 +8,10 @@ import { Layout } from '@/components/layout';
 import Dashboard from '@/pages/dashboard';
 import CreateCampaign from '@/pages/create-campaign';
 import Campaigns from '@/pages/campaigns';
+import CampaignDetail from '@/pages/campaign-detail';
 import Approvals from '@/pages/approvals';
 import Reporting from '@/pages/reporting';
+import Calendars from '@/pages/finance/calendars';
 import NotFound from '@/pages/not-found';
 
 import TaxonomyList from '@/pages/taxonomy/list';
@@ -24,7 +26,14 @@ import {
   Router as WouterRouter,
 } from 'wouter';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function Router() {
   return (
@@ -32,17 +41,26 @@ function Router() {
       <RoutedErrorBoundary>
         <Switch>
           <Route path="/" component={Dashboard} />
+          
+          {/* Campaign Workspace */}
           <Route path="/create-campaign" component={CreateCampaign} />
           <Route path="/campaigns" component={Campaigns} />
+          <Route path="/campaigns/:id" component={CampaignDetail} />
+          
           <Route path="/approvals" component={Approvals} />
           
+          {/* Foundation Taxonomy */}
           <Route path="/taxonomy" component={TaxonomyList} />
           <Route path="/taxonomy/imports" component={TaxonomyImports} />
           <Route path="/taxonomy/review-requests" component={TaxonomyReviewRequests} />
           <Route path="/taxonomy/new" component={TaxonomyDetail} />
           <Route path="/taxonomy/:id" component={TaxonomyDetail} />
 
+          {/* Finance Administration */}
+          <Route path="/finance/calendars" component={Calendars} />
+
           <Route path="/reporting" component={Reporting} />
+          
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>
@@ -58,7 +76,7 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+      <TooltipProvider delayDuration={200}>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <Router />
         </WouterRouter>

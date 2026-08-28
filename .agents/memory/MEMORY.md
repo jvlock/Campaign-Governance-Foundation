@@ -1,3 +1,4 @@
 - [Pnpm transitive security patches](pnpm-transitive-security-patches.md) — pure transitive updates may need workspace overrides when recursive updates preserve old resolutions.
 - [Public taxonomy access](public-taxonomy-access.md) — taxonomy administration intentionally permits anonymous reads and writes; retain shared-actor audit attribution.
+- [Closed-period serialization](closed-period-serialization.md) — finance mutations and period close must lock the same campaign planning rows before status checks and writes.
 - [Safe workbook imports](safe-workbook-imports.md) — parse only required OOXML worksheet parts; avoid unpatched xlsx libraries and whole-workbook loaders.
