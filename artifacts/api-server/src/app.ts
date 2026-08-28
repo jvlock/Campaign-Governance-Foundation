@@ -1,9 +1,11 @@
 import express, { type Express } from "express";
-import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { errorHandler } from "./middlewares/error-handler";
+import { authMiddleware } from "./middlewares/authMiddleware";
+import { requireSameOrigin } from "./middlewares/csrf-origin";
 
 const app: Express = express();
 
@@ -26,9 +28,11 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(authMiddleware);
+app.use(requireSameOrigin);
 
 app.use("/api", router);
 app.use(errorHandler);

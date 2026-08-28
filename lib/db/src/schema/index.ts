@@ -19,3 +19,5 @@
 
 export * from "./taxonomy-values";
 export * from "./foundation-activity";
+export * from "./auth";
+export * from "./taxonomy-governance";

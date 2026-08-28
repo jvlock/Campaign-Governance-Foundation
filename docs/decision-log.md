@@ -2,7 +2,7 @@
 
 ## 2026-08-28 — Greenfield boundary
 
-**Decision:** Treat every supplied external file as immutable reference material. Do not continue the HTML structure, workbook formulas, or any implied architecture.
+**Decision:** Treat every supplied external file as immutable reference material. Do not continue the HTML structure, workbook formulas, macros, or any implied architecture.
 
 **Reason:** The inputs contain useful business evidence but contradictory, incomplete, and channel-specific implementation choices.
 
@@ -10,16 +10,52 @@
 
 **Decision:** Use React/TypeScript, Express/TypeScript, OpenAPI-generated clients and validators, PostgreSQL, and Drizzle migrations.
 
-**Reason:** This keeps browser, API, and persistence boundaries explicit and supportable while preventing contract drift.
+**Reason:** This keeps browser, API, and persistence boundaries explicit while preventing contract drift.
 
-## 2026-08-28 — Governed values are persistent records
+## 2026-08-28 — Database-driven taxonomy categories
 
-**Decision:** Store taxonomy candidates in reference tables with stable IDs, source, status, and version. Do not embed authoritative arrays in page components.
+**Decision:** Store category metadata and governed values as records rather than authoritative UI arrays. Preserve the Phase 1 read-only reference table separately.
 
-**Reason:** Taxonomy lifecycle, provenance, and historical compatibility cannot be governed in hardcoded UI lists.
+**Reason:** New product, segment, persona, channel, geography, and fiscal categories must be administrable without code changes while the Phase 1 public contract remains compatible.
 
-## 2026-08-28 — Foundation-only surface
+## 2026-08-28 — Immutable identity and retained history
 
-**Decision:** Ship navigation, intentional empty states, readiness evidence, health, and read-only reference data. Defer campaign and taxonomy mutation workflows.
+**Decision:** A governed value’s stable key cannot be edited. Display names and definitions may evolve through versioned, audited updates. Values are retired or superseded, never physically deleted.
 
-**Reason:** The requested phase ends at a verified foundation; inventing unresolved workflows would harden risky assumptions.
+**Reason:** Historical campaigns and downstream systems require enduring references even when business language changes.
+
+## 2026-08-28 — Explicit lifecycle and concurrency
+
+**Decision:** Enforce `draft → in_review → approved → active`, with retire, reactivate, and supersede actions gated by role, dates, parent state, and optimistic row versions.
+
+**Reason:** A status field without transition rules, effective-date checks, or stale-write protection is not governance.
+
+## 2026-08-28 — Replit OIDC and deny-by-default authorization
+
+**Decision:** Use Replit OIDC/PKCE and server sessions. Bootstrap only the first administrator under a database lock; do not grant later authenticated users an implicit taxonomy role.
+
+**Reason:** Authentication does not itself confer governance authority, and concurrent first logins must not create multiple bootstrap administrators.
+
+## 2026-08-28 — Category-scoped stewardship
+
+**Decision:** Roles may be scoped to specific taxonomy categories, with scope enforced by the API for reads and mutations.
+
+**Reason:** Business ownership is distributed; a steward for one domain must not be able to inspect or change another domain through guessed record IDs.
+
+## 2026-08-28 — Source-backed staging, never silent normalization
+
+**Decision:** Parse selected preserved sources into persisted candidates with source locations. Generate review conflicts from those candidates and require structured resolution decisions.
+
+**Reason:** Fixed preview fixtures cannot prove migration safety. The legacy `na` collision must remain visible and cannot be resolved by free text or implicit normalization.
+
+## 2026-08-28 — Append-only governance evidence
+
+**Decision:** Record actor-attributed snapshots for value mutations and governance events, and prevent audit-row updates or deletion with database triggers.
+
+**Reason:** Application conventions alone do not make history immutable.
+
+## 2026-08-28 — Phase boundary
+
+**Decision:** Stop after Taxonomy Administration. Do not begin Campaign Registry or the newly supplied Campaign Setup Assistant in this task.
+
+**Reason:** The setup brief explicitly depends on prior Campaign Registry evidence, which is not part of this delivered phase.

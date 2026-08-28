@@ -1,57 +1,62 @@
-# Architecture Decision: Greenfield Campaign Governance Foundation
+# Architecture: Campaign Governance and Taxonomy Administration
 
-## Proposed structure
+## System structure
 
-- **Web:** React + TypeScript + Vite, with route-aware responsive application shell.
-- **API:** TypeScript + Express, contract-first through OpenAPI and generated clients/validators.
-- **Persistence:** PostgreSQL with Drizzle ORM, versioned SQL migrations, and an idempotent seed command.
-- **Governed data:** normalized reference tables with stable IDs, business codes, status, source, and taxonomy version.
-- **Documentation:** source assessment, architecture, material decision log, and implementation evidence.
+- **Web:** React, TypeScript, Vite, Wouter, TanStack Query, and accessible component primitives.
+- **API:** TypeScript and Express, with OpenAPI as the contract source of truth.
+- **Generated boundaries:** Orval generates React Query hooks and server-side Zod validators from the OpenAPI document.
+- **Persistence:** PostgreSQL with Drizzle schema definitions, versioned SQL migrations, and idempotent seeds.
+- **Authentication:** Replit OpenID Connect with PKCE, server-side sessions, browser cookies, and bearer-session support for non-browser clients.
 
-The foundation exposes read-only readiness, activity, and taxonomy endpoints. Campaign creation, taxonomy administration, approvals, budgets, exports, and integrations are intentionally deferred.
+The current delivered product includes the responsive application shell and database-driven Taxonomy Administration. Campaign setup, campaign registry, budgeting, reporting, and live business-system integrations remain outside this phase.
 
-## Domain direction
+## Governed taxonomy model
 
-Future campaigns will receive an immutable, non-semantic Campaign Key generated independently from name, fiscal period, taxonomy, or channel. Products, segments, personas, regions, and channels will be many-to-many relationships. Human-readable names will be mutable display data. Referenced taxonomy rows will be retired or superseded rather than deleted.
+Taxonomy category metadata is stored in the database, so adding categories does not require adding page-level arrays. Governed values have:
 
-## Database approach
+- an immutable `stableKey` independent of their mutable display name;
+- category, definition, owner, source, taxonomy version, legacy codes, and optional measurement rules;
+- effective start and end dates;
+- lifecycle state and optimistic `rowVersion`;
+- optional governed parent and superseding-value references;
+- usage visibility and retained history.
 
-PostgreSQL is authoritative. Drizzle schema files define tables and constraints; generated SQL migrations provide repeatable initialization. Seeds are idempotent and retain provenance. Current foundation tables are deliberately small:
+Lifecycle is explicit: `draft → in_review → approved → active`, with `inactive` and `superseded` outcomes. Values are retained rather than physically deleted. Parent cycles, unsupported parent categories, invalid effective-date ranges, inactive parents, and invalid supersession targets are rejected at the API boundary. Database foreign keys protect parent, association, supersession, category, review, and import references.
 
-- `taxonomy_values`: governed reference candidates with type, code, label, lifecycle status, source, version, and notes.
-- `foundation_activity`: material decisions, assessments, and evidence surfaced on the home page.
+## Authorization
 
-Future campaign tables should separate enduring identity, mutable names, planning periods, budgets, audiences, products, regions, channels, approvals, and immutable audit events.
+All taxonomy routes require an authenticated identity and an assigned taxonomy role. Authorization is deny-by-default:
 
-## Security boundaries
+- The first authenticated user may bootstrap the first administrator under a PostgreSQL advisory transaction lock.
+- Later authenticated users receive no implicit taxonomy access; an administrator must assign a role.
+- Role order is `reader`, `contributor`, `reviewer`, `steward`, `administrator`.
+- Optional category scopes are enforced for list, detail, history, hierarchy, association, review-request, and lifecycle operations.
+- The API, not the browser, is the enforcement boundary.
 
-- Browser code does not receive database credentials.
-- The API is the only persistence boundary.
-- Request logs strip query strings and redact authorization/cookie headers.
-- Error responses avoid stack traces and internal details.
-- No PII or confidential data may be placed in URLs, UTMs, logs, campaign keys, or generated identifiers.
-- Authentication, role-based authorization, and taxonomy stewardship are unresolved integrations and are not simulated in this phase.
+Cookie-authenticated mutations require a matching browser `Origin`; bearer-authenticated clients do not use browser cookies. Arbitrary credentialed CORS reflection is not enabled.
 
-## Testing approach
+## Audit and concurrency
 
-- Unit: pure naming, lifecycle, and validation rules as they are introduced.
-- Database: schema constraints and seed idempotency against an isolated test database.
-- API: health and contract smoke tests against the Express application.
-- UI: route and empty-state component tests with mocked generated API hooks.
-- End-to-end tests are deferred until a real workflow exists.
+Every governed-value mutation stores the authenticated actor, reason, and resulting snapshot. Association creation, import previews, and conflict resolutions also write governance events. Audit tables are append-only through PostgreSQL triggers. Update and lifecycle requests include `rowVersion`, and stale writes return `409`.
 
-## Deployment approach
+## Controlled source imports
 
-The web artifact is statically built and served through Replit routing. The shared API is a separate managed service under `/api`. Development uses the managed PostgreSQL database. Publishing applies supported schema changes to production; no startup-time DDL or custom production migration runner will be introduced.
+Files under `reference-materials/` remain immutable evidence. Import preview requests parse the selected preserved workbook or HTML at runtime:
 
-## Risks and assumptions
+- the audience workbook stages controlled values only from the aggregated `Consol Messaging` sheet, not contact/title rows;
+- the taxonomy workbook stages definitions plus source/medium/channel candidates from named source sheets;
+- the HTML guide stages channel/source/delivery candidates from its documented channel cards.
 
-- Source taxonomies are incomplete, inconsistent, and not steward-approved.
-- Legacy identifiers may have downstream dependencies not visible in the supplied files.
-- Future authorization and audit requirements may constrain schema and workflows.
-- Budget currency, fiscal calendar, region hierarchy, and integration ownership are unresolved.
-- Large legacy campaign histories will require a separately governed migration and reconciliation plan.
+Candidates are persisted with source locations and raw source context. They never become active values automatically. Conflicts are generated from the parsed data for ambiguous codes, catch-all labels, duplicates, and missing definitions. The legacy `na` value is traced to `Definitions!R43C5` and requires an explicit decision: map to a selected governed value or mark not applicable. Free-text notes alone cannot resolve it. A batch becomes reviewed only after all conflicts are resolved or intentionally ignored.
 
-## Unresolved integrations
+## Testing and operation
 
-Salesforce, advertising platforms, email/Pardot, analytics, finance, identity, and data-warehouse integrations are explicitly excluded from this phase. Before implementation, each needs an owner, data contract, authentication method, error/retry policy, rate-limit plan, and reconciliation process.
+- Unit tests cover role ordering, stable-key semantics, and ambiguous-code policy.
+- Database tests verify governed categories, draft seeds, audit records, and unique stable keys.
+- API tests exercise real session-backed actors, authorization, creation without code changes, optimistic concurrency, history, lifecycle, retention, source-backed import preview, and explicit conflict resolution.
+- Browser tests exercise Replit OIDC login, list/filter, create/edit, lifecycle, retained-history messaging, import conflicts, review requests, keyboard focus, and tablet layout.
+- Production schema changes use Replit Publish’s supported database-diff flow; the app performs no startup-time DDL.
+
+## Deferred systems
+
+Campaign Registry, guided Campaign Setup, approvals outside taxonomy lifecycle, budgets, reporting, Salesforce/Pardot, media platforms, analytics, finance, and data-warehouse integrations require separately approved contracts and ownership. No simulated integration is presented as production behavior.

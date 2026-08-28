@@ -7,8 +7,11 @@ import {
   Tags, 
   BarChart4, 
   Plus,
-  ShieldCheck
+  ShieldCheck,
+  LogIn,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 
@@ -22,6 +25,12 @@ const NAV_ITEMS = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { user, isLoading: isAuthLoading, login, logout } = useAuth();
+  const initials = [user?.firstName, user?.lastName]
+    .filter(Boolean)
+    .map((part) => part![0])
+    .join("")
+    .toUpperCase() || "U";
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-background text-foreground">
@@ -36,12 +45,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         
         <div className="flex-1 overflow-auto py-6 flex flex-col gap-6 px-4">
           <div className="px-2">
-            <Link href="/create-campaign">
-              <Button className="w-full justify-start gap-2 shadow-sm" variant="default">
+            <Button asChild className="w-full justify-start gap-2 shadow-sm" variant="default">
+              <Link href="/create-campaign">
                 <Plus className="h-4 w-4" />
                 New Campaign
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
           
           <nav className="flex flex-col gap-1">
@@ -71,15 +80,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         
         <div className="border-t p-4">
-          <div className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground">
-            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-[10px] font-bold text-primary">JD</span>
+          {isAuthLoading ? (
+            <div className="h-9 animate-pulse rounded-md bg-muted" />
+          ) : user ? (
+            <div className="flex items-center gap-2 rounded-md px-2 py-2 text-sm">
+              <div className="h-7 w-7 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-[10px] font-bold text-primary">{initials}</span>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-xs font-semibold text-foreground">
+                  {[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Signed-in user"}
+                </span>
+                <span className="truncate text-[10px] text-muted-foreground">{user.email}</span>
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={logout} aria-label="Log out">
+                <LogOut className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <div className="flex flex-col">
-              <span className="text-foreground text-xs font-semibold leading-none">Jane Doe</span>
-              <span className="text-[10px] leading-tight mt-0.5">Gov Admin</span>
-            </div>
-          </div>
+          ) : (
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={login}>
+              <LogIn className="h-4 w-4" />
+              Log in
+            </Button>
+          )}
         </div>
       </aside>
 
@@ -91,11 +114,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <ShieldCheck className="h-5 w-5 text-primary" />
             <span>GovCenter</span>
           </Link>
-          <Link href="/create-campaign">
-            <Button size="icon" variant="default" className="h-8 w-8 rounded-full">
+          <Button asChild size="icon" variant="default" className="h-8 w-8 rounded-full">
+            <Link href="/create-campaign">
               <Plus className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </header>
 
         {/* Scrollable Content Area */}

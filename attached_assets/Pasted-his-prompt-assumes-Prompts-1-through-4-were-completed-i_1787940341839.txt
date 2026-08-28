@@ -1,0 +1,79 @@
+his prompt assumes Prompts 1 through 4 were completed in the same Replit project. If they were not, stop and complete them first. Verify current taxonomy definitions, reference workbooks, campaign workflow, decisions, and passing test evidence before making changes. Do not assume functionality exists without repository and test evidence.
+
+Implement the segment-led audience and multi-product planning model.
+
+Do not treat Audience as one field. Maintain separate dimensions for:
+
+Segment family
+
+Subsegment
+
+Account size tier
+
+Account tier or priority
+
+Relationship: prospect, client, former client, partner, mixed
+
+Buying-group function
+
+Persona
+
+Seniority
+
+Messaging cohort
+
+Behavioral cohort
+
+Audience origin or targeting method
+
+Region and country
+
+Language
+
+Buying or journey stage
+
+Requirements:
+
+Allow one primary segment and multiple additional segments.
+
+Allow multiple personas and buying-group functions.
+
+Preserve raw representative titles as evidence while mapping them to canonical personas.
+
+Other, All, and Mixed-title cannot be permanent personas. Treat them as unresolved classifications or deliberate execution consolidations.
+
+Messaging cohorts must be named, versioned, governed treatments. Do not use only generic labels such as Cohort 1.
+
+Record cohort inclusion rules, exclusion rules, value proposition, effective dates, source, owner, and eligible channels.
+
+Display working audience counts as planning estimates, not guaranteed reachable audiences.
+
+Flag audiences that are too small, too broad, internally inconsistent, or missing a meaningful persona.
+
+Account size tiers must state their measurement basis and threshold; do not assume one threshold works for all segments.
+
+Multi-product requirements:
+
+Associate many products and capabilities with one campaign.
+
+For each association, record the role: primary solution, supporting capability, cross-sell offer, upsell offer, proof point, content/data source, CTA destination, or internal relevance only.
+
+Allow an activity to promote a subset of the campaign's products.
+
+Prevent duplicate product associations.
+
+Do not duplicate campaign cost when one cost supports several products.
+
+Acceptance criteria:
+
+A campaign can target several personas and use several products without duplicating the campaign.
+
+Cohorts remain separate from personas.
+
+Product roles and audience dimensions report separately.
+
+Invalid Other or undefined classifications produce governance requests.
+
+Tests cover combinations, inheritance, size rules, audience warnings, and product allocation integrity.
+
+At completion, provide sample records using the supplied Asset Owner and Hedge Fund source data, screenshots, changed files, migrations, test results, and limitations. Stop after this phase.

@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed:foundation": "tsx ./src/seed-foundation.ts",
+    "seed:taxonomy": "tsx ./src/seed-taxonomy.ts",
     "test:unit": "tsx --test ./src/tests/unit.test.ts",
     "test:database": "tsx --test ./src/tests/database.test.ts",
     "test:api": "tsx --test ./src/tests/api.test.ts",

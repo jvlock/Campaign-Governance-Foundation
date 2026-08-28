@@ -9,9 +9,13 @@ import Dashboard from '@/pages/dashboard';
 import CreateCampaign from '@/pages/create-campaign';
 import Campaigns from '@/pages/campaigns';
 import Approvals from '@/pages/approvals';
-import Taxonomy from '@/pages/taxonomy';
 import Reporting from '@/pages/reporting';
 import NotFound from '@/pages/not-found';
+
+import TaxonomyList from '@/pages/taxonomy/list';
+import TaxonomyDetail from '@/pages/taxonomy/detail';
+import TaxonomyImports from '@/pages/taxonomy/imports';
+import TaxonomyReviewRequests from '@/pages/taxonomy/review-requests';
 
 import {
   Route,
@@ -31,7 +35,13 @@ function Router() {
           <Route path="/create-campaign" component={CreateCampaign} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/approvals" component={Approvals} />
-          <Route path="/taxonomy" component={Taxonomy} />
+          
+          <Route path="/taxonomy" component={TaxonomyList} />
+          <Route path="/taxonomy/imports" component={TaxonomyImports} />
+          <Route path="/taxonomy/review-requests" component={TaxonomyReviewRequests} />
+          <Route path="/taxonomy/new" component={TaxonomyDetail} />
+          <Route path="/taxonomy/:id" component={TaxonomyDetail} />
+
           <Route path="/reporting" component={Reporting} />
           <Route component={NotFound} />
         </Switch>

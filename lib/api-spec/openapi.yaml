@@ -1,127 +1,495 @@
 openapi: 3.1.0
 info:
   title: Api
-  version: 0.1.0
-  description: Campaign Governance foundation API
+  version: 0.2.0
+  description: Campaign Governance API
 servers:
   - url: /api
-    description: Base API path
 tags:
   - name: health
+  - name: Auth
   - name: foundation
+  - name: taxonomy
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Check application and database health
       responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-        "503":
-          description: Database unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+        "200": { description: Healthy, content: { application/json: { schema: { $ref: "#/components/schemas/HealthStatus" } } } }
+        "503": { description: Degraded, content: { application/json: { schema: { $ref: "#/components/schemas/HealthStatus" } } } }
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      tags: [Auth]
+      responses:
+        "200": { description: Current auth state, content: { application/json: { schema: { $ref: "#/components/schemas/AuthUserEnvelope" } } } }
+  /login:
+    get:
+      operationId: beginBrowserLogin
+      tags: [Auth]
+      parameters:
+        - { name: returnTo, in: query, schema: { type: string } }
+      responses:
+        "302": { description: OIDC redirect }
+  /callback:
+    get:
+      operationId: handleBrowserLoginCallback
+      tags: [Auth]
+      responses:
+        "302": { description: Login callback redirect }
+  /logout:
+    get:
+      operationId: logoutBrowserSession
+      tags: [Auth]
+      parameters:
+        - { name: returnTo, in: query, schema: { type: string, default: / } }
+      responses:
+        "302": { description: Logout redirect }
+  /mobile-auth/token-exchange:
+    post:
+      operationId: exchangeMobileAuthorizationCode
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MobileTokenExchangeRequest" }
+      responses:
+        "200": { description: Session created, content: { application/json: { schema: { $ref: "#/components/schemas/MobileTokenExchangeSuccess" } } } }
+        "400": { description: Invalid request, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "401": { description: Unauthorized, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+        "500": { description: Exchange failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /mobile-auth/logout:
+    post:
+      operationId: logoutMobileSession
+      tags: [Auth]
+      responses:
+        "200": { description: Logged out, content: { application/json: { schema: { $ref: "#/components/schemas/LogoutSuccess" } } } }
   /foundation/summary:
     get:
       operationId: getFoundationSummary
       tags: [foundation]
-      summary: Get foundation readiness and governed data counts
       responses:
-        "200":
-          description: Foundation summary
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FoundationSummary"
+        "200": { description: Summary, content: { application/json: { schema: { $ref: "#/components/schemas/FoundationSummary" } } } }
   /foundation/taxonomies:
     get:
       operationId: listTaxonomyValues
       tags: [foundation]
-      summary: List governed taxonomy values
       parameters:
-        - name: type
-          in: query
-          required: false
-          schema:
-            $ref: "#/components/schemas/TaxonomyType"
+        - { name: type, in: query, schema: { $ref: "#/components/schemas/LegacyTaxonomyType" } }
       responses:
-        "200":
-          description: Governed taxonomy values
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TaxonomyValue"
+        "200": { description: Legacy values, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LegacyTaxonomyValue" } } } } }
   /foundation/activity:
     get:
       operationId: listFoundationActivity
       tags: [foundation]
-      summary: List recent foundation decisions and evidence
       responses:
-        "200":
-          description: Recent activity
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/FoundationActivity"
+        "200": { description: Activity, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/FoundationActivity" } } } } }
+  /taxonomy/access:
+    get:
+      operationId: getTaxonomyAccess
+      tags: [taxonomy]
+      responses:
+        "200": { description: Effective permissions, content: { application/json: { schema: { $ref: "#/components/schemas/TaxonomyAccess" } } } }
+        "401": { description: Unauthorized }
+  /taxonomy/categories:
+    get:
+      operationId: listTaxonomyCategories
+      tags: [taxonomy]
+      responses:
+        "200": { description: Categories, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TaxonomyCategory" } } } } }
+  /taxonomy/values:
+    get:
+      operationId: listGovernedValues
+      tags: [taxonomy]
+      parameters:
+        - { name: category, in: query, schema: { $ref: "#/components/schemas/TaxonomyCategoryKey" } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/GovernanceStatus" } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: parentId, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Governed values, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/GovernedValue" } } } } }
+    post:
+      operationId: createGovernedValue
+      tags: [taxonomy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GovernedValueInput" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/GovernedValue" } } } }
+        "400": { description: Invalid }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "409": { description: Conflict }
+  /taxonomy/values/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getGovernedValue
+      tags: [taxonomy]
+      responses:
+        "200": { description: Detail, content: { application/json: { schema: { $ref: "#/components/schemas/GovernedValueDetail" } } } }
+        "404": { description: Not found }
+    patch:
+      operationId: updateGovernedValue
+      tags: [taxonomy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GovernedValueUpdate" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/GovernedValue" } } } }
+        "403": { description: Forbidden }
+        "409": { description: Conflict }
+    delete:
+      operationId: deleteGovernedValue
+      tags: [taxonomy]
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Forbidden }
+        "409": { description: Referenced or not draft }
+  /taxonomy/values/{id}/transition:
+    post:
+      operationId: transitionGovernedValue
+      tags: [taxonomy]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GovernanceTransitionInput" }
+      responses:
+        "200": { description: Transitioned, content: { application/json: { schema: { $ref: "#/components/schemas/GovernedValue" } } } }
+        "400": { description: Illegal transition }
+        "403": { description: Forbidden }
+  /taxonomy/values/{id}/history:
+    get:
+      operationId: listGovernedValueHistory
+      tags: [taxonomy]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: History, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TaxonomyAuditEvent" } } } } }
+  /taxonomy/associations:
+    post:
+      operationId: createTaxonomyAssociation
+      tags: [taxonomy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaxonomyAssociationInput" }
+      responses:
+        "201": { description: Associated, content: { application/json: { schema: { $ref: "#/components/schemas/TaxonomyAssociation" } } } }
+        "403": { description: Forbidden }
+        "409": { description: Duplicate }
+  /taxonomy/review-requests:
+    get:
+      operationId: listTaxonomyReviewRequests
+      tags: [taxonomy]
+      responses:
+        "200": { description: Requests, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TaxonomyReviewRequest" } } } } }
+    post:
+      operationId: createTaxonomyReviewRequest
+      tags: [taxonomy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaxonomyReviewRequestInput" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/TaxonomyReviewRequest" } } } }
+  /taxonomy/imports:
+    get:
+      operationId: listTaxonomyImports
+      tags: [taxonomy]
+      responses:
+        "200": { description: Imports, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TaxonomyImportBatch" } } } } }
+  /taxonomy/imports/preview:
+    post:
+      operationId: createTaxonomyImportPreview
+      tags: [taxonomy]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaxonomyImportPreviewInput" }
+      responses:
+        "201": { description: Preview created, content: { application/json: { schema: { $ref: "#/components/schemas/TaxonomyImportBatch" } } } }
+        "403": { description: Forbidden }
+  /taxonomy/imports/{id}/conflicts:
+    get:
+      operationId: listTaxonomyImportConflicts
+      tags: [taxonomy]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Conflicts, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TaxonomyImportConflict" } } } } }
+  /taxonomy/conflicts/{id}/resolve:
+    post:
+      operationId: resolveTaxonomyImportConflict
+      tags: [taxonomy]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConflictResolutionInput" }
+      responses:
+        "200": { description: Resolved, content: { application/json: { schema: { $ref: "#/components/schemas/TaxonomyImportConflict" } } } }
+        "403": { description: Forbidden }
 components:
   schemas:
     HealthStatus:
       type: object
       required: [status, application, database, checkedAt]
       properties:
-        status:
-          type: string
-          enum: [ok, degraded]
-        application:
-          type: string
-          enum: [reachable]
-        database:
-          type: string
-          enum: [reachable, unreachable]
-        checkedAt:
-          type: string
-          format: date-time
-    TaxonomyType:
+        status: { type: string, enum: [ok, degraded] }
+        application: { type: string, enum: [reachable] }
+        database: { type: string, enum: [reachable, unreachable] }
+        checkedAt: { type: string, format: date-time }
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id: { type: string }
+        email: { type: [string, "null"] }
+        firstName: { type: [string, "null"] }
+        lastName: { type: [string, "null"] }
+        profileImageUrl: { type: [string, "null"] }
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - { $ref: "#/components/schemas/AuthUser" }
+            - { type: "null" }
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code: { type: string, minLength: 1 }
+        code_verifier: { type: string, minLength: 1 }
+        redirect_uri: { type: string, minLength: 1 }
+        state: { type: string, minLength: 1 }
+        nonce: { type: string }
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties: { token: { type: string } }
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties: { success: { type: boolean } }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties: { error: { type: string } }
+    TaxonomyCategoryKey:
+      type: string
+      enum: [strategic_program, segment, subsegment, account_size_tier, buying_group_function, persona, seniority_level, messaging_cohort, product, product_family, capability_solution, customer_need, campaign_type, business_objective, commercial_motion, marketing_objective, primary_conversion, journey_stage, region, subregion, country, market_cluster, language, channel, source, delivery_mechanism, platform, activity_type, creative_format, call_to_action, campaign_member_status_template, fiscal_calendar, fiscal_year, fiscal_quarter, fiscal_period, currency, cost_center]
+    GovernanceStatus:
+      type: string
+      enum: [draft, in_review, approved, active, inactive, superseded]
+    TaxonomyCategory:
+      type: object
+      required: [key, displayName, supportsParent, supportsMeasurementRule]
+      properties:
+        key: { $ref: "#/components/schemas/TaxonomyCategoryKey" }
+        displayName: { type: string }
+        supportsParent: { type: boolean }
+        supportsMeasurementRule: { type: boolean }
+    GovernedValue:
+      type: object
+      required: [id, stableKey, category, displayName, definition, status, effectiveStart, taxonomyVersion, source, owner, legacyCodes, usageCount, rowVersion, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        stableKey: { type: string }
+        category: { $ref: "#/components/schemas/TaxonomyCategoryKey" }
+        displayName: { type: string }
+        definition: { type: string }
+        status: { $ref: "#/components/schemas/GovernanceStatus" }
+        effectiveStart: { type: string }
+        effectiveEnd: { type: [string, "null"] }
+        taxonomyVersion: { type: string }
+        source: { type: string }
+        owner: { type: string }
+        parentId: { type: [string, "null"] }
+        supersededById: { type: [string, "null"] }
+        legacyCodes: { type: array, items: { type: string } }
+        measurementRule: { type: [string, "null"] }
+        usageCount: { type: number }
+        rowVersion: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    GovernedValueDetail:
+      allOf:
+        - { $ref: "#/components/schemas/GovernedValue" }
+        - type: object
+          required: [associations, history]
+          properties:
+            associations: { type: array, items: { $ref: "#/components/schemas/TaxonomyAssociation" } }
+            history: { type: array, items: { $ref: "#/components/schemas/TaxonomyAuditEvent" } }
+    GovernedValueInput:
+      type: object
+      required: [stableKey, category, displayName, definition, effectiveStart, taxonomyVersion, source, owner]
+      properties:
+        stableKey: { type: string, minLength: 3 }
+        category: { $ref: "#/components/schemas/TaxonomyCategoryKey" }
+        displayName: { type: string, minLength: 1 }
+        definition: { type: string, minLength: 1 }
+        effectiveStart: { type: string }
+        effectiveEnd: { type: [string, "null"] }
+        taxonomyVersion: { type: string, minLength: 1 }
+        source: { type: string, minLength: 1 }
+        owner: { type: string, minLength: 1 }
+        parentId: { type: [string, "null"] }
+        legacyCodes: { type: array, items: { type: string } }
+        measurementRule: { type: [string, "null"] }
+    GovernedValueUpdate:
+      type: object
+      required: [displayName, definition, effectiveStart, taxonomyVersion, source, owner, rowVersion]
+      properties:
+        displayName: { type: string, minLength: 1 }
+        definition: { type: string, minLength: 1 }
+        effectiveStart: { type: string }
+        effectiveEnd: { type: [string, "null"] }
+        taxonomyVersion: { type: string }
+        source: { type: string }
+        owner: { type: string }
+        parentId: { type: [string, "null"] }
+        legacyCodes: { type: array, items: { type: string } }
+        measurementRule: { type: [string, "null"] }
+        rowVersion: { type: number }
+    GovernanceTransitionInput:
+      type: object
+      required: [action, reason, rowVersion]
+      properties:
+        action: { type: string, enum: [submit_review, approve, activate, retire, supersede] }
+        reason: { type: string, minLength: 1 }
+        replacementId: { type: [string, "null"] }
+        rowVersion: { type: number }
+    TaxonomyAuditEvent:
+      type: object
+      required: [id, valueId, action, actorId, actorLabel, reason, snapshot, createdAt]
+      properties:
+        id: { type: string }
+        valueId: { type: string }
+        action: { type: string }
+        actorId: { type: string }
+        actorLabel: { type: string }
+        reason: { type: string }
+        snapshot: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+    TaxonomyAssociationInput:
+      type: object
+      required: [fromValueId, toValueId, relationshipType]
+      properties:
+        fromValueId: { type: string }
+        toValueId: { type: string }
+        relationshipType: { type: string }
+    TaxonomyAssociation:
+      type: object
+      required: [id, fromValueId, toValueId, relationshipType, createdAt]
+      properties:
+        id: { type: string }
+        fromValueId: { type: string }
+        toValueId: { type: string }
+        relationshipType: { type: string }
+        createdAt: { type: string, format: date-time }
+    TaxonomyAccess:
+      type: object
+      required: [role, canRead, canPropose, canReview, canActivate, canAdminister, categories]
+      properties:
+        role: { type: string, enum: [reader, contributor, reviewer, steward, administrator] }
+        canRead: { type: boolean }
+        canPropose: { type: boolean }
+        canReview: { type: boolean }
+        canActivate: { type: boolean }
+        canAdminister: { type: boolean }
+        categories: { type: array, items: { $ref: "#/components/schemas/TaxonomyCategoryKey" } }
+    TaxonomyReviewRequestInput:
+      type: object
+      required: [category, proposedName, context]
+      properties:
+        category: { $ref: "#/components/schemas/TaxonomyCategoryKey" }
+        proposedName: { type: string }
+        context: { type: string }
+    TaxonomyReviewRequest:
+      type: object
+      required: [id, category, proposedName, context, status, requestedBy, createdAt]
+      properties:
+        id: { type: string }
+        category: { $ref: "#/components/schemas/TaxonomyCategoryKey" }
+        proposedName: { type: string }
+        context: { type: string }
+        status: { type: string, enum: [open, resolved, rejected] }
+        requestedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+    TaxonomyImportPreviewInput:
+      type: object
+      required: [sourceFile]
+      properties:
+        sourceFile: { type: string, enum: [segments_workbook, taxonomy_workbook, utm_html] }
+    TaxonomyImportBatch:
+      type: object
+      required: [id, sourceFile, status, candidateCount, conflictCount, createdBy, createdAt]
+      properties:
+        id: { type: string }
+        sourceFile: { type: string }
+        status: { type: string, enum: [preview, reviewed, applied] }
+        candidateCount: { type: number }
+        conflictCount: { type: number }
+        createdBy: { type: string }
+        createdAt: { type: string, format: date-time }
+    TaxonomyImportConflict:
+      type: object
+      required: [id, importBatchId, conflictType, sourceValue, details, status]
+      properties:
+        id: { type: string }
+        importBatchId: { type: string }
+        conflictType: { type: string, enum: [duplicate, ambiguous_code, inconsistent_label, missing_definition, hierarchy_gap] }
+        sourceValue: { type: string }
+        details: { type: string }
+        status: { type: string, enum: [open, resolved, ignored] }
+        resolution: { type: [string, "null"] }
+        resolutionDecision: { type: [string, "null"], enum: [map_to_governed_value, not_applicable, ignore_source, null] }
+        targetValueId: { type: [string, "null"] }
+    ConflictResolutionInput:
+      type: object
+      required: [status, resolution, resolutionDecision]
+      properties:
+        status: { type: string, enum: [resolved, ignored] }
+        resolution: { type: string, minLength: 1 }
+        resolutionDecision: { type: string, enum: [map_to_governed_value, not_applicable, ignore_source] }
+        targetValueId: { type: [string, "null"] }
+    LegacyTaxonomyType:
       type: string
       enum: [segment, persona, product, region, channel]
-    TaxonomyValue:
+    LegacyTaxonomyValue:
       type: object
       required: [id, type, code, label, status, source, taxonomyVersion]
       properties:
-        id:
-          type: string
-        type:
-          $ref: "#/components/schemas/TaxonomyType"
-        code:
-          type: string
-        label:
-          type: string
-        status:
-          type: string
-          enum: [draft, active, retired, superseded]
-        source:
-          type: string
-        taxonomyVersion:
-          type: string
-        notes:
-          type: ["string", "null"]
+        id: { type: string }
+        type: { $ref: "#/components/schemas/LegacyTaxonomyType" }
+        code: { type: string }
+        label: { type: string }
+        status: { type: string, enum: [draft, active, retired, superseded] }
+        source: { type: string }
+        taxonomyVersion: { type: string }
+        notes: { type: [string, "null"] }
     FoundationSummary:
       type: object
       required: [phase, readiness, governedValues, taxonomyVersion, principles]
       properties:
-        phase:
-          type: string
+        phase: { type: string }
         readiness:
           type: object
           required: [applicationShell, database, api, documentation, testing]
@@ -131,29 +499,15 @@ components:
             api: { type: string }
             documentation: { type: string }
             testing: { type: string }
-        governedValues:
-          type: object
-          additionalProperties:
-            type: number
-        taxonomyVersion:
-          type: string
-        principles:
-          type: array
-          items:
-            type: string
+        governedValues: { type: object, additionalProperties: { type: number } }
+        taxonomyVersion: { type: string }
+        principles: { type: array, items: { type: string } }
     FoundationActivity:
       type: object
       required: [id, kind, title, detail, recordedAt]
       properties:
-        id:
-          type: string
-        kind:
-          type: string
-          enum: [decision, evidence, assessment]
-        title:
-          type: string
-        detail:
-          type: string
-        recordedAt:
-          type: string
-          format: date-time
+        id: { type: string }
+        kind: { type: string, enum: [decision, evidence, assessment] }
+        title: { type: string }
+        detail: { type: string }
+        recordedAt: { type: string, format: date-time }

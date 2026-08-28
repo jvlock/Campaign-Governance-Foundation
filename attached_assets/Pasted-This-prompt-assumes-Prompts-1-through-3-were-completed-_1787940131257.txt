@@ -1,0 +1,115 @@
+This prompt assumes Prompts 1 through 3 were completed in the same Replit project. If they were not, stop and complete them first. Verify the Campaign Registry, taxonomy administration, architecture, decision log, and passing test evidence before changing code. Do not assume functionality exists without repository and test evidence.
+
+Build a guided Campaign Setup Assistant for nontechnical Marketing and Sales users. It must use plain business language and progressively reveal only relevant questions. Do not expose internal database terms such as pl1, pl2, positional parsing, or raw taxonomy codes.
+
+The workflow must include:
+
+What are you trying to create?
+
+Integrated campaign
+
+Activation campaign
+
+Nurture journey
+
+Event or event series
+
+Research or content launch
+
+Paid-media campaign
+
+Sales campaign or cadence
+
+Client expansion campaign
+
+Newsletter
+
+In-app campaign
+
+Another approved campaign type
+
+Is this new or related to something existing?
+
+New program or campaign
+
+Wave under an existing campaign
+
+Activity under an existing campaign
+
+Copy a prior campaign
+
+What are you trying to achieve?
+
+Who are you trying to reach?
+
+What customer need or opportunity are you addressing?
+
+Which products or capabilities support it?
+
+What do you want the audience to do?
+
+When will it run?
+
+How will it be delivered?
+
+Review and submit
+
+Experience requirements:
+
+One clear question group per step
+
+Visible progress indicator
+
+Save as draft and resume later
+
+Back and next controls without data loss
+
+Contextual help in plain language
+
+Searchable controlled selections
+
+One primary value and multiple additional values where appropriate
+
+Suggested values based on earlier answers, but never silent auto-selection
+
+Warnings for conflicting or overly broad selections
+
+Live plain-language campaign summary
+
+Probable duplicate check before submission
+
+Final review showing the planned hierarchy and generated names
+
+No horizontal table requiring training to understand
+
+Keyboard accessibility, clear focus states, readable errors, and tablet support
+
+Rules:
+
+Campaign type controls which later questions appear.
+
+A user adding an activity to an approved campaign should not re-answer inherited campaign questions.
+
+Inherited values must be visible and explain where they came from.
+
+Users may request a new taxonomy value, but cannot create an ungoverned value from the workflow.
+
+Do not allow an undocumented generate anyway action.
+
+Show errors at the affected step and in a final issue summary.
+
+Acceptance criteria:
+
+A first-time user can create a complete draft without referring to the legacy guide.
+
+Conditional questions behave correctly for at least integrated campaign, activation, nurture, event, paid media, and sales cadence.
+
+Drafts survive refresh and sign-out/sign-in.
+
+Inheritance works for waves and activities.
+
+Duplicate detection runs before submission.
+
+Usability, accessibility, validation, and regression tests pass.
+
+At completion, provide screenshots of every step, changed files, rule coverage, test results, and known gaps. Stop after this phase.
