@@ -77,6 +77,24 @@ test("activity and authoritative cost integrity constraints are installed", asyn
   assert.equal(Number(result.rows[0]?.constraints), 4);
 });
 
+test("configurable activities and stable execution lineage are installed and seeded", async () => {
+  const result = await pool.query<{ configurations: string; published: string; executionTrigger: string }>(`
+    select
+      (select count(distinct stable_key)::text from activity_type_configurations) as configurations,
+      (select count(*)::text from activity_type_configurations where status = 'published') as published,
+      (select count(*)::text from pg_trigger where tgname = 'activity_execution_immutable_key') as "executionTrigger"
+  `);
+  assert.ok(Number(result.rows[0]?.configurations) >= 12);
+  assert.ok(Number(result.rows[0]?.published) >= 12);
+  assert.equal(Number(result.rows[0]?.executionTrigger), 1);
+  const columns = await pool.query<{ count: string }>(`
+    select count(*)::text as count from information_schema.columns
+    where table_name = 'campaign_activities'
+      and column_name in ('configuration_id','configuration_version','parent_activity_id','configuration_answers','row_version')
+  `);
+  assert.equal(Number(columns.rows[0]?.count), 5);
+});
+
 test("fiscal_snapshot_period_immutable trigger rejects INSERT when snapshot is published", async () => {
   const result = await pool.query<{ event_manipulation: string }>(`
     SELECT pg_get_triggerdef(oid) as event_manipulation
@@ -116,6 +134,54 @@ test("forward migration 0005 exists for campaign period lock and is tracked in j
   const journal = JSON.parse(fs.readFileSync('../lib/db/drizzle/meta/_journal.json', 'utf8'));
   assert.ok(journal.entries.some((e: any) => e.tag === '0005_closed_period_delete_lock'));
   assert.ok(fs.existsSync('../lib/db/drizzle/0005_closed_period_delete_lock.sql'));
+});
+
+test("forward migration 0006 contains idempotent channel seeds and execution integrity", () => {
+  const journal = JSON.parse(fs.readFileSync('../lib/db/drizzle/meta/_journal.json', 'utf8'));
+  assert.ok(journal.entries.some((e: any) => e.tag === '0006_configurable_channel_activities'));
+  const migration = fs.readFileSync('../lib/db/drizzle/0006_configurable_channel_activities.sql', 'utf8');
+  assert.match(migration, /ON CONFLICT \("stable_key","version"\) DO NOTHING/);
+  assert.match(migration, /activity_execution_immutable_key/);
+  for (const key of ['email', 'paid-search', 'paid-social', 'events', 'sales-cadences', 'mcp', 'partner-marketing']) {
+    assert.ok(migration.includes(`('${key}'`), `missing seed ${key}`);
+  }
+});
+
+test("forward repair migration 0007 restores schema-push integrity objects idempotently", () => {
+  const journal = JSON.parse(fs.readFileSync('../lib/db/drizzle/meta/_journal.json', 'utf8'));
+  assert.ok(journal.entries.some((e: any) => e.tag === '0007_schema_push_integrity_repair'));
+  const migration = fs.readFileSync('../lib/db/drizzle/0007_schema_push_integrity_repair.sql', 'utf8');
+  assert.match(migration, /DROP TRIGGER IF EXISTS campaign_period_closed_lock/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION protect_closed_campaign_period/);
+  assert.match(migration, /campaign_activity_delivery_range/);
+  assert.match(migration, /configuration_id/);
+  assert.match(migration, /activity_type_configurations/);
+});
+
+test("activity configuration foreign key is declared in schema and installed in database", async () => {
+  const schema = fs.readFileSync('../lib/db/src/schema/campaign-registry.ts', 'utf8');
+  assert.match(schema, /configurationId: uuid\("configuration_id"\)\.references\(\(\) => activityTypeConfigurationsTable\.id/);
+  const result = await pool.query<{ count: string }>(`
+    select count(*)::text as count from pg_constraint constraint_row
+    join pg_attribute column_row on column_row.attrelid = constraint_row.conrelid
+      and column_row.attnum = any(constraint_row.conkey)
+    where constraint_row.contype = 'f'
+      and constraint_row.conrelid = 'campaign_activities'::regclass
+      and column_row.attname = 'configuration_id'
+  `);
+  assert.equal(Number(result.rows[0]?.count), 1);
+});
+
+test("forward migration 0008 upgrades display partnership paid-media questions", () => {
+  const migration = fs.readFileSync('../lib/db/drizzle/0008_display_partnership_paid_media_fields.sql', 'utf8');
+  for (const field of ['campaign', 'audienceOrAdGroup', 'creative', 'placement', 'platformId', 'objective', 'landingPage']) {
+    assert.ok(migration.includes(`"key":"${field}"`), `missing paid-media field ${field}`);
+  }
+  for (const field of ['deliveryStartDate', 'deliveryEndDate', 'productValueIds']) {
+    assert.ok(migration.includes(`'${field}'`), `missing inheritance metadata ${field}`);
+  }
+  assert.match(migration, /inheritable_fields/);
+  assert.match(migration, /permitted_overrides/);
 });
 
 test("route handlers use deterministic SELECT ... FOR UPDATE to eliminate races on period status", () => {

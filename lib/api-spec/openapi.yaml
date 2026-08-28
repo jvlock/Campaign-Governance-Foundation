@@ -12,6 +12,8 @@ tags:
   - name: taxonomy
   - name: campaigns
   - name: finance
+  - name: channel-configurations
+  - name: executions
 paths:
   /healthz:
     get:
@@ -262,6 +264,31 @@ paths:
       responses:
         "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/Campaign" } } } }
         "400": { description: Invalid, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /activity-type-configurations:
+    get:
+      operationId: listActivityTypeConfigurations
+      tags: [channel-configurations]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [draft, published] } }
+      responses:
+        "200": { description: Versioned configurations, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ActivityTypeConfiguration" } } } } }
+    post:
+      operationId: createActivityTypeConfiguration
+      tags: [channel-configurations]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityTypeConfigurationInput" } } } }
+      responses:
+        "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityTypeConfiguration" } } } }
+        "409": { description: Version conflict }
+  /activity-type-configurations/{configurationId}/publish:
+    post:
+      operationId: publishActivityTypeConfiguration
+      tags: [channel-configurations]
+      parameters:
+        - { name: configurationId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityTypeConfigurationPublish" } } } }
+      responses:
+        "200": { description: Published configuration, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityTypeConfiguration" } } } }
+        "409": { description: Configuration is not a draft }
   /campaigns/{campaignKey}:
     parameters:
       - { name: campaignKey, in: path, required: true, schema: { type: string, format: uuid } }
@@ -342,6 +369,50 @@ paths:
       responses:
         "200": { description: Activity updated, content: { application/json: { schema: { $ref: "#/components/schemas/CampaignActivity" } } } }
         "423": { description: Activity has allocations in a closed period }
+  /activities/{activityId}/executions:
+    get:
+      operationId: listActivityExecutions
+      tags: [executions]
+      parameters:
+        - { name: activityId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Executions, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ActivityExecution" } } } } }
+    post:
+      operationId: createActivityExecution
+      tags: [executions]
+      parameters:
+        - { name: activityId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecutionInput" } } } }
+      responses:
+        "201": { description: Execution created, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecution" } } } }
+  /executions/{executionKey}:
+    patch:
+      operationId: updateActivityExecution
+      tags: [executions]
+      parameters:
+        - { name: executionKey, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecutionUpdate" } } } }
+      responses:
+        "200": { description: Execution updated, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecution" } } } }
+        "409": { description: Stale execution }
+  /executions/{executionKey}/copy:
+    post:
+      operationId: copyActivityExecution
+      tags: [executions]
+      parameters:
+        - { name: executionKey, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecutionCopy" } } } }
+      responses:
+        "201": { description: Copied with a new stable key, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecution" } } } }
+  /executions/{executionKey}/versions:
+    post:
+      operationId: versionActivityExecution
+      tags: [executions]
+      parameters:
+        - { name: executionKey, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecutionVersion" } } } }
+      responses:
+        "201": { description: New version with a new stable key, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecution" } } } }
   /campaigns/{campaignKey}/costs:
     post:
       operationId: createCampaignCost
@@ -879,6 +950,21 @@ components:
         deliveryEndDate: { type: string, format: date }
         accountingDate: { type: [string, "null"], format: date }
         channelValueId: { type: [string, "null"], format: uuid }
+        parentActivityId: { type: [string, "null"], format: uuid }
+        configurationId: { type: [string, "null"], format: uuid }
+        activityType: { type: [string, "null"] }
+        owner: { type: [string, "null"] }
+        source: { type: [string, "null"] }
+        platform: { type: [string, "null"] }
+        status: { type: string }
+        audienceTreatment: { type: [string, "null"] }
+        region: { type: [string, "null"] }
+        language: { type: [string, "null"] }
+        primaryCta: { type: [string, "null"] }
+        landingDestination: { type: [string, "null"] }
+        assetIds: { type: array, items: { type: string } }
+        externalIds: { type: object, additionalProperties: true }
+        configurationAnswers: { type: object, additionalProperties: true }
         authoritativeCostMinor: { $ref: "#/components/schemas/MinorMoney" }
         currency: { type: string, minLength: 3, maxLength: 3 }
         productValueIds:
@@ -892,6 +978,7 @@ components:
           required: [reason]
           properties:
             reason: { type: string, minLength: 1 }
+            rowVersion: { type: integer, minimum: 1 }
     CampaignActivity:
       allOf:
         - { $ref: "#/components/schemas/CampaignActivityInput" }
@@ -900,14 +987,111 @@ components:
           properties:
             id: { type: string, format: uuid }
             campaignKey: { type: string, format: uuid }
+            configurationVersion: { type: [integer, "null"] }
+            rowVersion: { type: integer }
+            createdBy: { type: string }
+            updatedBy: { type: string }
             createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
     CampaignActivityDetail:
       allOf:
         - { $ref: "#/components/schemas/CampaignActivity" }
         - type: object
-          required: [periodAllocations]
+          required: [periodAllocations, executions]
           properties:
             periodAllocations: { type: array, items: { $ref: "#/components/schemas/ActivityPeriodAllocation" } }
+            executions: { type: array, items: { $ref: "#/components/schemas/ActivityExecution" } }
+            configuration: { oneOf: [{ $ref: "#/components/schemas/ActivityTypeConfiguration" }, { type: "null" }] }
+    ActivityConfigurationQuestion:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string, minLength: 1 }
+        label: { type: string }
+        required: { type: boolean }
+        options: { type: array, items: { type: string } }
+        requiredWhen:
+          type: object
+          required: [field, equals]
+          properties:
+            field: { type: string }
+            equals: {}
+    ActivityTypeConfigurationInput:
+      type: object
+      required: [stableKey, displayName, version, questions, validations, namingTemplate, memberStatuses, inheritableFields, permittedOverrides]
+      properties:
+        stableKey: { type: string, minLength: 2 }
+        displayName: { type: string, minLength: 1 }
+        channelValueId: { type: [string, "null"], format: uuid }
+        version: { type: integer, minimum: 1 }
+        questions: { type: array, items: { $ref: "#/components/schemas/ActivityConfigurationQuestion" } }
+        validations: { type: object, additionalProperties: true }
+        namingTemplate: { type: string, minLength: 1 }
+        memberStatuses: { type: array, items: { type: string } }
+        inheritableFields: { type: array, items: { type: string } }
+        permittedOverrides: { type: array, items: { type: string } }
+    ActivityTypeConfigurationPublish:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1 }
+    ActivityTypeConfiguration:
+      allOf:
+        - { $ref: "#/components/schemas/ActivityTypeConfigurationInput" }
+        - type: object
+          required: [id, status, createdBy, updatedBy, createdAt, updatedAt]
+          properties:
+            id: { type: string, format: uuid }
+            status: { type: string, enum: [draft, published] }
+            createdBy: { type: string }
+            updatedBy: { type: string }
+            publishedBy: { type: [string, "null"] }
+            publishedAt: { type: [string, "null"], format: date-time }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    ActivityExecutionInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        status: { type: string }
+        creativeLineage: { type: object, additionalProperties: true }
+        copyLineage: { type: object, additionalProperties: true }
+        assetIds: { type: array, uniqueItems: true, items: { type: string } }
+        externalIds: { type: object, additionalProperties: true }
+        configurationData: { type: object, additionalProperties: true }
+    ActivityExecutionUpdate:
+      allOf:
+        - { $ref: "#/components/schemas/ActivityExecutionInput" }
+        - type: object
+          required: [rowVersion]
+          properties:
+            rowVersion: { type: integer, minimum: 1 }
+    ActivityExecutionCopy:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        targetActivityId: { type: string, format: uuid }
+    ActivityExecutionVersion:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+    ActivityExecution:
+      allOf:
+        - { $ref: "#/components/schemas/ActivityExecutionInput" }
+        - type: object
+          required: [executionKey, activityId, versionNumber, rowVersion, createdBy, updatedBy, createdAt, updatedAt]
+          properties:
+            executionKey: { type: string, format: uuid }
+            activityId: { type: string, format: uuid }
+            versionNumber: { type: integer }
+            copiedFromExecutionKey: { type: [string, "null"], format: uuid }
+            previousVersionExecutionKey: { type: [string, "null"], format: uuid }
+            rowVersion: { type: integer }
+            createdBy: { type: string }
+            updatedBy: { type: string }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
     CampaignCostInput:
       type: object
       required: [description, authoritativeAmountMinor, currency]

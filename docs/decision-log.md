@@ -87,3 +87,15 @@
 **Decision:** Lock closed campaign planning periods in both API and database controls. Reopening requires a reason and named approver and creates immutable history.
 
 **Reason:** Auditability requires enforced controls rather than UI convention, while legitimate correcting entries still need an approved path.
+
+## 2026-08-28 — Versioned channel configuration and execution identity
+
+**Decision:** Keep activities as campaign planning containers, define channel behavior through global versioned configurations, and model each reusable delivery execution with its own immutable UUID plus explicit copy/version lineage.
+
+**Reason:** Administrators must be able to add future channel workflows without interface rewrites, while creative changes and reuse remain traceable without changing campaign identity or duplicating assets and costs.
+
+## 2026-08-28 — Controlled MCP intent only
+
+**Decision:** MCP activity configuration stores controlled intent categories and rejects raw prompt material recursively from destinations, analytics/external identifiers, answers, and execution lineage/configuration.
+
+**Reason:** Raw prompts are unsafe and unstable analytics dimensions and must never be encoded into URLs or tracking parameters.

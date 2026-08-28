@@ -7,8 +7,14 @@
  */
 import type { CampaignActivityInput } from './campaignActivityInput';
 
-export type CampaignActivity = CampaignActivityInput & {
+export type CampaignActivity = CampaignActivityInput & ({
   id: string;
   campaignKey: string;
+  /** @nullable */
+  configurationVersion?: number | null;
+  rowVersion?: number;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: Date;
-};
+  updatedAt?: Date;
+});

@@ -10,4 +10,6 @@ import type { CampaignActivityInput } from './campaignActivityInput';
 export type CampaignActivityUpdate = CampaignActivityInput & {
   /** @minLength 1 */
   reason: string;
+  /** @minimum 1 */
+  rowVersion?: number;
 };

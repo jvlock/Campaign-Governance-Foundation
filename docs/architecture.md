@@ -8,7 +8,7 @@
 - **Persistence:** PostgreSQL with Drizzle schema definitions, versioned SQL migrations, and idempotent seeds.
 - **Authentication:** Replit OpenID Connect with PKCE, server-side sessions, browser cookies, and bearer-session support for non-browser clients.
 
-The backend now includes Campaign Registry, resumable guided-setup drafts, normalized audience/product planning, fiscal snapshots, and multi-period budgeting. The React application remains unchanged; reporting and live business-system integrations remain outside this phase.
+The product now includes Campaign Registry, resumable guided-setup drafts, normalized audience/product planning, fiscal snapshots, multi-period budgeting, and configurable channel activities with reusable executions. Reporting and live business-system integrations remain outside this phase.
 
 ## Campaign identity and setup
 
@@ -19,6 +19,16 @@ Draft setup captures the business-language campaign type, relationship, objectiv
 Products are many-to-many with explicit roles. Activities may select a subset. `campaign_costs.authoritative_amount_minor` is the single cost fact; product, segment, region, and channel rows are allocation dimensions and cannot create another authoritative cost.
 
 Activity create/update APIs retain delivery start/end separately from the optional accounting date, enforce product subsets against the campaign plan, and reject mutation when an existing allocation touches a closed period. Authoritative campaign costs have dedicated create/update APIs. Their reporting allocations use integer basis points: every represented dimension must independently total exactly 10,000 (100%). Totals are never added across dimensions, so a cost attributed across product, segment, region, and channel still contributes only its one authoritative amount to campaign spend.
+
+## Configurable channel activities and executions
+
+Activities remain planning containers beneath the enduring Campaign Key. Each has its own opaque UUID Activity Key, optional parent/wave relationship, governed channel, owner/source/platform facts, delivery and accounting dates, audience treatment, product subset, locale, CTA/destination, reusable asset references, external identifiers, exact budget, status, and optimistic version.
+
+Global activity-type configurations are versioned independently of campaigns. A published configuration supplies database-driven questions, conditional requirements, validation rules, a naming template, member statuses, inheritance fields, and permitted overrides. Existing activities retain the selected configuration ID and version so later configuration versions cannot silently reinterpret historical answers. The initial seed covers email, paid search, paid social, display/content partnerships, organic social, employee advocacy, events, sales cadences, in-app, MCP, website, and partner marketing.
+
+Executions are many-to-one beneath an activity. Each execution receives an immutable UUID Execution Key and records its own status, version, creative/copy lineage, reusable asset IDs, platform facts, and optimistic version. Copying creates a new key with `copiedFromExecutionKey`; versioning creates a new key with `previousVersionExecutionKey` and an incremented version. Asset IDs are referenced rather than duplicated.
+
+MCP configurations require a controlled intent category and `rejectRawPrompt` policy. MCP classification comes from that durable policy or the governed MCP channel—not a configuration-name convention. API validation recursively rejects raw-prompt keys or values in activity answers, destinations, external identifiers, and execution configuration/lineage, so prompt text cannot leak into URLs or analytics parameters.
 
 ## Fiscal planning and money
 

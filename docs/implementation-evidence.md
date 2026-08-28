@@ -140,3 +140,31 @@ Unresolved finance-policy questions:
 6. Which accounting date wins when invoice, service, posting, and payment dates differ?
 7. Are negative corrections allowed after close, and if so must they use a correcting period rather than reopening?
 8. For month allocation, should partial months be day-weighted or treated as equal active months? The current activity monthly method treats active months equally; campaign monthly allocation is day-weighted across explicit periods.
+
+## Configurable channel activity and execution evidence — 2026-08-28
+
+Delivered:
+
+- Versioned global configurations for all 12 initial channels, with database-driven conditional questions, validations, naming templates, member statuses, inheritance, and permitted overrides.
+- Expanded activities with stable UUID keys, parent/wave linkage, configuration snapshots, owner/source/platform, dates, audience treatment, product subsets, locale, CTA/destination, assets, exact budget, statuses, external identifiers, and optimistic concurrency.
+- Stable execution UUIDs with status edits, version numbers, reusable asset references, creative/copy facts, external identifiers, copy lineage, and previous-version lineage.
+- Contract-first configuration administration, execution CRUD/copy/version endpoints, generated Zod validators, and generated React Query clients.
+- Campaign detail reloads configurations, activity products and fiscal allocations, plus all execution lineage.
+- MCP validation derives protection from explicit configuration policy or the governed MCP channel, requires controlled intent categories, and rejects raw prompt keys or values from activity and execution data even when a configuration uses a different stable key.
+- An idempotent forward integrity repair restores migration-only constraints and triggers in development databases originally created through schema push.
+
+Verification:
+
+- OpenAPI code generation passed.
+- Full workspace TypeScript and production API/web builds passed.
+- API suite: **14 passed, 0 failed**, including conditional configuration, effective status rules, contiguous fiscal coverage, exact automatic create/update allocation, allocation-scoped period locking, MCP prompt safety, asset reuse, stale execution rejection, copy/version lineage, and reload persistence.
+- Database suite: **14 passed, 0 failed**, including stable execution keys, all channel seeds, the activity/configuration foreign key, idempotent forward migrations, fiscal immutability, append-only history, and closed-period controls.
+- Browser E2E passed for configuration browsing, MCP governance, inherited dates/products, visible standard activity fields, email activity creation, two-asset execution creation, execution status editing, copy, version, reload persistence, and a 390×844 responsive pass.
+- Browser evidence: MCP configuration `19vikz`; completed execution edit `9an75s`; persisted execution lineage `zd2ey7`; final mobile layout `8r4r1h`.
+- Saved live preview: `docs/screenshots/channel-activities-final.jpg`.
+- Independent architecture review passed after the configuration, MCP, fiscal coverage, status-default, and schema-alignment hardening.
+
+Known gaps:
+
+- This phase records external platform identifiers but does not create or synchronize records in email, advertising, event, sales, or analytics systems.
+- Asset IDs are reusable governed references; binary asset storage and asset-library administration remain separate concerns.

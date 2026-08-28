@@ -43,6 +43,27 @@
       "when": 1787952749006,
       "tag": "0005_closed_period_delete_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787956000000,
+      "tag": "0006_configurable_channel_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787957000000,
+      "tag": "0007_schema_push_integrity_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787958000000,
+      "tag": "0008_display_partnership_paid_media_fields",
+      "breakpoints": true
     }
   ]
 }

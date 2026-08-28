@@ -182,3 +182,14 @@ export function setupIssues(input: {
   if (input.startDate && input.endDate && input.endDate < input.startDate) issues.push("Expected end date cannot precede start date");
   return issues;
 }
+
+export function containsRawPrompt(value: unknown): boolean {
+  if (typeof value === "string") return /(?:raw[\s_-]*prompt|prompt[\s_-]*(?:text|value)?)/i.test(value);
+  if (Array.isArray(value)) return value.some(containsRawPrompt);
+  if (!value || typeof value !== "object") return false;
+  return Object.entries(value as Record<string, unknown>).some(([key, nested]) => {
+    const normalized = key.toLowerCase().replace(/[^a-z]/g, "");
+    return ["prompt", "rawprompt", "prompttext", "fullprompt", "userprompt"].includes(normalized)
+      || containsRawPrompt(nested);
+  });
+}

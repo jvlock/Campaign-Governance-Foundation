@@ -3,7 +3,9 @@ import crypto from "node:crypto";
 import test from "node:test";
 import {
   db,
+  activityExecutionsTable,
   campaignPlanningPeriodsTable,
+  fiscalPeriodsTable,
   governedValuesTable,
   sessionsTable,
   taxonomyUserRolesTable,
@@ -142,6 +144,393 @@ test("administrator can add multiple categories without code changes", async () 
     });
     assert.equal(response.status, 201, await response.clone().text());
   }
+});
+
+test("administrator can create and publish a conditional future-channel configuration without code changes", async () => {
+  const stableKey = `future-channel-${crypto.randomUUID()}`;
+  const createdResponse = await api("/activity-type-configurations", adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      stableKey,
+      displayName: "Future conditional channel",
+      version: 1,
+      questions: [
+        { key: "motion", required: true, options: ["launch", "always-on"] },
+        { key: "launchCode", requiredWhen: { field: "motion", equals: "launch" } },
+      ],
+      validations: { ownerRequired: true },
+      namingTemplate: "{campaign}-{motion}-{name}",
+      memberStatuses: ["Targeted", "Responded"],
+      inheritableFields: ["region", "language"],
+      permittedOverrides: ["language"],
+    }),
+  });
+  assert.equal(createdResponse.status, 201, await createdResponse.clone().text());
+  const created = await createdResponse.json() as any;
+  assert.equal(created.status, "draft");
+  assert.equal(created.stableKey, stableKey);
+  assert.equal(created.questions[1].requiredWhen.field, "motion");
+
+  const publishedResponse = await api(`/activity-type-configurations/${created.id}/publish`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({ reason: "Approved for future use" }),
+  });
+  assert.equal(publishedResponse.status, 200, await publishedResponse.clone().text());
+  assert.equal((await publishedResponse.json() as any).status, "published");
+
+  const listedResponse = await api("/activity-type-configurations?status=published");
+  assert.equal(listedResponse.status, 200, await listedResponse.clone().text());
+  assert.ok((await listedResponse.json() as any[]).some((configuration) => configuration.stableKey === stableKey));
+});
+
+test("configured activities enforce conditional and MCP rules while execution copy/version lineage remains stable", async () => {
+  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  assert.ok(product);
+  const suffix = crypto.randomUUID();
+  const configResponse = await api("/activity-type-configurations", adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      stableKey: `conditional-${suffix}`, displayName: "Conditional execution test", version: 1,
+      questions: [
+        { key: "motion", required: true, options: ["launch", "always-on"] },
+        { key: "launchCode", requiredWhen: { field: "motion", equals: "launch" } },
+      ],
+      validations: { allowedStatuses: ["active"] }, namingTemplate: "{campaign}-{motion}-{name}", memberStatuses: [],
+      inheritableFields: [], permittedOverrides: [],
+    }),
+  });
+  assert.equal(configResponse.status, 201, await configResponse.clone().text());
+  const config = await configResponse.json() as any;
+  assert.equal((await api(`/activity-type-configurations/${config.id}/publish`, adminSid, {
+    method: "POST", body: JSON.stringify({ reason: "integration test" }),
+  })).status, 200);
+
+  const campaignResponse = await api("/campaigns", undefined, {
+    method: "POST",
+    body: JSON.stringify({
+      name: `Configured activity ${suffix}`, campaignType: "integrated", relationshipType: "new",
+      startDate: "2034-01-01", endDate: "2034-01-31",
+    }),
+  });
+  assert.equal(campaignResponse.status, 201, await campaignResponse.clone().text());
+  const campaign = await campaignResponse.json() as any;
+  assert.equal((await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
+    method: "PUT", body: JSON.stringify({ associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }] }),
+  })).status, 200);
+  const activityBase = {
+    name: "Launch execution", deliveryStartDate: "2034-01-02", deliveryEndDate: "2034-01-10",
+    authoritativeCostMinor: "100", currency: "USD", productValueIds: [product.id], configurationId: config.id,
+  };
+  const missingConditional = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({ ...activityBase, configurationAnswers: { motion: "launch" } }),
+  });
+  assert.equal(missingConditional.status, 400);
+  const omittedDraftStatus = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({ ...activityBase, configurationAnswers: { motion: "always-on" } }),
+  });
+  assert.equal(omittedDraftStatus.status, 400);
+  const activityResponse = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({ ...activityBase, status: "active", configurationAnswers: { motion: "launch", launchCode: "L-1" } }),
+  });
+  assert.equal(activityResponse.status, 201, await activityResponse.clone().text());
+  const activity = await activityResponse.json() as any;
+  assert.equal(activity.configurationVersion, 1);
+
+  const assets = ["asset-shared-a", "asset-shared-b"];
+  const executionResponse = await api(`/activities/${activity.id}/executions`, undefined, {
+    method: "POST", body: JSON.stringify({ name: "Primary creative", assetIds: assets, configurationData: { variant: "A" } }),
+  });
+  assert.equal(executionResponse.status, 201, await executionResponse.clone().text());
+  const execution = await executionResponse.json() as any;
+  const copiedResponse = await api(`/executions/${execution.executionKey}/copy`, undefined, {
+    method: "POST", body: JSON.stringify({ name: "Copied creative" }),
+  });
+  assert.equal(copiedResponse.status, 201, await copiedResponse.clone().text());
+  const copied = await copiedResponse.json() as any;
+  assert.notEqual(copied.executionKey, execution.executionKey);
+  assert.equal(copied.copiedFromExecutionKey, execution.executionKey);
+  assert.deepEqual(copied.assetIds, assets);
+  const versionResponse = await api(`/executions/${execution.executionKey}/versions`, undefined, {
+    method: "POST", body: JSON.stringify({ name: "Primary creative v2" }),
+  });
+  assert.equal(versionResponse.status, 201, await versionResponse.clone().text());
+  const version = await versionResponse.json() as any;
+  assert.notEqual(version.executionKey, execution.executionKey);
+  assert.equal(version.previousVersionExecutionKey, execution.executionKey);
+  assert.equal(version.versionNumber, execution.versionNumber + 1);
+  const stale = await api(`/executions/${execution.executionKey}`, undefined, {
+    method: "PATCH", body: JSON.stringify({ name: "Updated creative", rowVersion: execution.rowVersion }),
+  });
+  assert.equal(stale.status, 200, await stale.clone().text());
+  const staleAgain = await api(`/executions/${execution.executionKey}`, undefined, {
+    method: "PATCH", body: JSON.stringify({ name: "Stale update", rowVersion: execution.rowVersion }),
+  });
+  assert.equal(staleAgain.status, 409);
+  const detail = await api(`/campaigns/${campaign.campaignKey}`);
+  assert.equal(detail.status, 200, await detail.clone().text());
+  const persistedActivity = (await detail.json() as any).activities.find((item: any) => item.id === activity.id);
+  assert.equal(persistedActivity.configuration.id, config.id);
+  assert.equal(persistedActivity.executions.length, 3);
+
+  const mcpChannelResponse = await api("/taxonomy/values", adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      stableKey: `TEST_MCP_CHANNEL_${suffix.replaceAll("-", "")}`,
+      category: "channel",
+      displayName: "MCP",
+      definition: "Governed MCP channel for policy enforcement testing.",
+      effectiveStart: "2026-08-28",
+      taxonomyVersion: "test-1",
+      source: "Automated test",
+      owner: "Test owner",
+    }),
+  });
+  assert.equal(mcpChannelResponse.status, 201, await mcpChannelResponse.clone().text());
+  const mcpChannel = await mcpChannelResponse.json() as any;
+  const unsafeChannelConfig = await api("/activity-type-configurations", adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      stableKey: `activation-orchestrator-${suffix}`,
+      displayName: "Activation orchestrator",
+      channelValueId: mcpChannel.id,
+      version: 1,
+      questions: [{ key: "intentCategory", required: true, options: ["awareness", "consideration", "evaluation", "conversion", "retention"] }],
+      validations: {},
+      namingTemplate: "{campaign}-activation-{name}",
+      memberStatuses: [],
+      inheritableFields: [],
+      permittedOverrides: [],
+    }),
+  });
+  assert.equal(unsafeChannelConfig.status, 400);
+  const governedMcpConfigResponse = await api("/activity-type-configurations", adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      stableKey: `activation-orchestrator-${suffix}`,
+      displayName: "Activation orchestrator",
+      channelValueId: mcpChannel.id,
+      version: 1,
+      questions: [{ key: "intentCategory", required: true, options: ["awareness", "consideration", "evaluation", "conversion", "retention"] }],
+      validations: { rejectRawPrompt: true },
+      namingTemplate: "{campaign}-activation-{name}",
+      memberStatuses: [],
+      inheritableFields: [],
+      permittedOverrides: [],
+    }),
+  });
+  assert.equal(governedMcpConfigResponse.status, 201, await governedMcpConfigResponse.clone().text());
+  const governedMcpConfig = await governedMcpConfigResponse.json() as any;
+  const governedMcpPublish = await api(`/activity-type-configurations/${governedMcpConfig.id}/publish`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({ reason: "Administrator-authenticated MCP policy test" }),
+  });
+  assert.equal(governedMcpPublish.status, 200, await governedMcpPublish.clone().text());
+  const governedMcpPrompt = await api(`/campaigns/${campaign.campaignKey}/activities`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      ...activityBase,
+      name: "Governed channel unsafe",
+      configurationId: governedMcpConfig.id,
+      channelValueId: mcpChannel.id,
+      configurationAnswers: { intentCategory: "conversion", promptText: "must be rejected" },
+    }),
+  });
+  assert.equal(governedMcpPrompt.status, 400);
+  const governedMcpActivityResponse = await api(`/campaigns/${campaign.campaignKey}/activities`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      ...activityBase,
+      name: "Governed channel safe",
+      configurationId: governedMcpConfig.id,
+      channelValueId: mcpChannel.id,
+      configurationAnswers: { intentCategory: "conversion" },
+    }),
+  });
+  assert.equal(governedMcpActivityResponse.status, 201, await governedMcpActivityResponse.clone().text());
+  const governedMcpActivity = await governedMcpActivityResponse.json() as any;
+  const governedMcpExecution = await api(`/activities/${governedMcpActivity.id}/executions`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({ name: "Governed channel unsafe execution", configurationData: { rawPrompt: "must be rejected" } }),
+  });
+  assert.equal(governedMcpExecution.status, 400);
+
+  const configs = await (await api("/activity-type-configurations?status=published")).json() as any[];
+  const mcp = configs.find((item) => item.stableKey === "mcp");
+  assert.ok(mcp);
+  const rejectedMcp = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({
+      ...activityBase, name: "Unsafe MCP", configurationId: mcp.id, activityType: "email",
+      configurationAnswers: { intentCategory: "awareness", rawPrompt: "do not persist this" },
+    }),
+  });
+  assert.equal(rejectedMcp.status, 400);
+  const promptKeyMcp = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({
+      ...activityBase, name: "Prompt-key MCP", configurationId: mcp.id,
+      configurationAnswers: { intentCategory: "awareness", prompt: "do not persist this" },
+    }),
+  });
+  assert.equal(promptKeyMcp.status, 400);
+  const mcpActivityResponse = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({
+      ...activityBase, name: "Safe MCP", configurationId: mcp.id,
+      configurationAnswers: { intentCategory: "awareness" },
+    }),
+  });
+  assert.equal(mcpActivityResponse.status, 201, await mcpActivityResponse.clone().text());
+  const mcpActivity = await mcpActivityResponse.json() as any;
+  const rejectedMcpExecution = await api(`/activities/${mcpActivity.id}/executions`, undefined, {
+    method: "POST", body: JSON.stringify({ name: "Unsafe MCP copy", externalIds: { promptText: "secret prompt" } }),
+  });
+  assert.equal(rejectedMcpExecution.status, 400);
+  const [legacyTainted] = await db.insert(activityExecutionsTable).values({
+    activityId: mcpActivity.id,
+    name: "Legacy tainted MCP execution",
+    configurationData: { prompt: "legacy raw prompt" },
+    createdBy: "legacy-import",
+    updatedBy: "legacy-import",
+  }).returning();
+  const rejectedLegacyVersion = await api(`/executions/${legacyTainted.executionKey}/versions`, undefined, {
+    method: "POST", body: JSON.stringify({ name: "Must not version" }),
+  });
+  assert.equal(rejectedLegacyVersion.status, 400);
+});
+
+test("activity allocations reconcile on create/update and lock only touched fiscal periods", async () => {
+  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  assert.ok(product);
+  const suffix = crypto.randomUUID();
+  const calendarResponse = await api("/fiscal-calendars", undefined, {
+    method: "POST", body: JSON.stringify({ stableKey: `ALLOC-${suffix}`, name: "Allocation lock test" }),
+  });
+  assert.equal(calendarResponse.status, 201, await calendarResponse.clone().text());
+  const calendar = await calendarResponse.json() as any;
+  const snapshotResponse = await api(`/fiscal-calendars/${calendar.id}/snapshots`, undefined, {
+    method: "POST", body: JSON.stringify({
+      version: 1, rules: { test: true }, periods: [
+        { stableKey: `OLD-${suffix}`, fiscalYear: "FY2040", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2040-01-01", endDate: "2040-01-31" },
+        { stableKey: `FUTURE-${suffix}`, fiscalYear: "FY2040", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2040-02-01", endDate: "2040-02-29" },
+      ],
+    }),
+  });
+  assert.equal(snapshotResponse.status, 201, await snapshotResponse.clone().text());
+  const snapshot = await snapshotResponse.json() as any;
+  const campaignResponse = await api("/campaigns", undefined, {
+    method: "POST", body: JSON.stringify({
+      name: `Allocation campaign ${suffix}`, campaignType: "integrated", relationshipType: "new",
+      startDate: "2040-01-01", endDate: "2040-02-29",
+    }),
+  });
+  assert.equal(campaignResponse.status, 201, await campaignResponse.clone().text());
+  const campaign = await campaignResponse.json() as any;
+  assert.equal((await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
+    method: "PUT", body: JSON.stringify({ associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }] }),
+  })).status, 200);
+  assert.equal((await api(`/campaigns/${campaign.campaignKey}/budget`, undefined, {
+    method: "PUT", body: JSON.stringify({
+      fiscalCalendarSnapshotId: snapshot.id, requestedMinor: "10000", approvedMinor: "10000",
+      currency: "USD", currencyMinorUnits: 2, budgetOwner: "Test", costCenter: "TEST",
+      fundingSource: "Test", allocationMethod: "even",
+    }),
+  })).status, 200);
+  const generatedResponse = await api(`/campaigns/${campaign.campaignKey}/planning-periods/generate`, undefined, {
+    method: "POST", body: JSON.stringify({ method: "even" }),
+  });
+  assert.equal(generatedResponse.status, 200, await generatedResponse.clone().text());
+  const periods = await generatedResponse.json() as any[];
+  const oldPeriod = periods.find((period) => period.stableKey.includes(`OLD-${suffix}`)) ?? periods[0];
+
+  const createActivity = (name: string, start: string, end: string, cost: string) => api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({
+      name, deliveryStartDate: start, deliveryEndDate: end, authoritativeCostMinor: cost,
+      currency: "USD", productValueIds: [product.id],
+    }),
+  });
+  const oldActivityResponse = await createActivity("Prior period activity", "2040-01-10", "2040-01-20", "1101");
+  assert.equal(oldActivityResponse.status, 201, await oldActivityResponse.clone().text());
+  const oldActivity = await oldActivityResponse.json() as any;
+  assert.equal((await api(`/planning-periods/${oldPeriod.id}/close`, undefined, {
+    method: "POST", body: JSON.stringify({ reason: "Close prior period", varianceExplanation: "None", unusedBudgetTreatment: "expire" }),
+  })).status, 200);
+
+  const futureResponse = await createActivity("Future activity", "2040-02-02", "2040-02-20", "3001");
+  assert.equal(futureResponse.status, 201, await futureResponse.clone().text());
+  let future = await futureResponse.json() as any;
+  let detail = await (await api(`/campaigns/${campaign.campaignKey}`)).json() as any;
+  let persisted = detail.activities.find((item: any) => item.id === future.id);
+  assert.equal(persisted.periodAllocations.reduce((sum: bigint, row: any) => sum + BigInt(row.amountMinor), 0n), 3001n);
+
+  const updateResponse = await api(`/activities/${future.id}`, undefined, {
+    method: "PATCH", body: JSON.stringify({
+      name: future.name, deliveryStartDate: "2040-02-05", deliveryEndDate: "2040-02-25",
+      authoritativeCostMinor: "4003", currency: "USD", productValueIds: [product.id],
+      rowVersion: future.rowVersion, reason: "Reforecast future delivery",
+    }),
+  });
+  assert.equal(updateResponse.status, 200, await updateResponse.clone().text());
+  future = await updateResponse.json() as any;
+  detail = await (await api(`/campaigns/${campaign.campaignKey}`)).json() as any;
+  persisted = detail.activities.find((item: any) => item.id === future.id);
+  assert.equal(persisted.periodAllocations.reduce((sum: bigint, row: any) => sum + BigInt(row.amountMinor), 0n), 4003n);
+
+  const oldTouchedUpdate = await api(`/activities/${oldActivity.id}`, undefined, {
+    method: "PATCH", body: JSON.stringify({
+      name: oldActivity.name, deliveryStartDate: "2040-01-10", deliveryEndDate: "2040-01-20",
+      authoritativeCostMinor: "1102", currency: "USD", productValueIds: [product.id],
+      rowVersion: oldActivity.rowVersion, reason: "Must remain locked",
+    }),
+  });
+  assert.equal(oldTouchedUpdate.status, 423);
+  const proposedClosedUpdate = await api(`/activities/${future.id}`, undefined, {
+    method: "PATCH", body: JSON.stringify({
+      name: future.name, deliveryStartDate: "2040-01-25", deliveryEndDate: "2040-02-25",
+      authoritativeCostMinor: "4003", currency: "USD", productValueIds: [product.id],
+      rowVersion: future.rowVersion, reason: "Must not touch closed period",
+    }),
+  });
+  assert.equal(proposedClosedUpdate.status, 423);
+  assert.equal((await createActivity("Closed activity", "2040-01-05", "2040-01-08", "100")).status, 423);
+});
+
+test("activity creation rejects planning-period coverage gaps", async () => {
+  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  assert.ok(product);
+  const suffix = crypto.randomUUID();
+  const calendar = await (await api("/fiscal-calendars", undefined, {
+    method: "POST", body: JSON.stringify({ stableKey: `GAP-${suffix}`, name: "Gap coverage test" }),
+  })).json() as any;
+  const snapshotResponse = await api(`/fiscal-calendars/${calendar.id}/snapshots`, undefined, {
+    method: "POST", body: JSON.stringify({
+      version: 1, rules: {}, periods: [
+        { stableKey: `G1-${suffix}`, fiscalYear: "FY2041", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2041-01-01", endDate: "2041-01-10" },
+        { stableKey: `G2-${suffix}`, fiscalYear: "FY2041", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2041-01-12", endDate: "2041-01-31" },
+      ],
+    }),
+  });
+  assert.equal(snapshotResponse.status, 201, await snapshotResponse.clone().text());
+  const snapshot = await snapshotResponse.json() as any;
+  const campaign = await (await api("/campaigns", undefined, {
+    method: "POST", body: JSON.stringify({ name: `Gap campaign ${suffix}`, campaignType: "integrated", relationshipType: "new", startDate: "2041-01-01", endDate: "2041-01-31" }),
+  })).json() as any;
+  await api(`/campaigns/${campaign.campaignKey}/products`, undefined, { method: "PUT", body: JSON.stringify({ associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }] }) });
+  await api(`/campaigns/${campaign.campaignKey}/budget`, undefined, { method: "PUT", body: JSON.stringify({ fiscalCalendarSnapshotId: snapshot.id, requestedMinor: "1", approvedMinor: "1", currency: "USD", currencyMinorUnits: 2, budgetOwner: "Test", costCenter: "TEST", fundingSource: "Test", allocationMethod: "even" }) });
+  const fiscalPeriods = await db.select().from(fiscalPeriodsTable).where(eq(fiscalPeriodsTable.snapshotId, snapshot.id));
+  await db.insert(campaignPlanningPeriodsTable).values(fiscalPeriods.map((period, index) => ({
+    stableKey: `GAP-PLAN-${suffix}-${index}`,
+    campaignKey: campaign.campaignKey,
+    fiscalPeriodId: period.id,
+    readableName: period.stableKey,
+    requestedMinor: "1",
+    approvedMinor: "1",
+    plannedMinor: "0",
+    committedMinor: "0",
+    actualMinor: "0",
+    forecastMinor: "0",
+  })));
+  const activity = await api(`/campaigns/${campaign.campaignKey}/activities`, undefined, {
+    method: "POST", body: JSON.stringify({ name: "Spans gap", deliveryStartDate: "2041-01-09", deliveryEndDate: "2041-01-13", authoritativeCostMinor: "10", currency: "USD", productValueIds: [product.id] }),
+  });
+  assert.equal(activity.status, 409);
 });
 
 test("rename preserves stable key, rejects stale updates, records history, and protects deletion", async () => {

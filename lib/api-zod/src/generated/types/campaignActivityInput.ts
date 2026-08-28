@@ -5,6 +5,8 @@
  * Campaign Governance API
  * OpenAPI spec version: 0.2.0
  */
+import type { CampaignActivityInputConfigurationAnswers } from './campaignActivityInputConfigurationAnswers';
+import type { CampaignActivityInputExternalIds } from './campaignActivityInputExternalIds';
 import type { MinorMoney } from './minorMoney';
 
 export interface CampaignActivityInput {
@@ -16,6 +18,32 @@ export interface CampaignActivityInput {
   accountingDate?: Date | null;
   /** @nullable */
   channelValueId?: string | null;
+  /** @nullable */
+  parentActivityId?: string | null;
+  /** @nullable */
+  configurationId?: string | null;
+  /** @nullable */
+  activityType?: string | null;
+  /** @nullable */
+  owner?: string | null;
+  /** @nullable */
+  source?: string | null;
+  /** @nullable */
+  platform?: string | null;
+  status?: string;
+  /** @nullable */
+  audienceTreatment?: string | null;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  language?: string | null;
+  /** @nullable */
+  primaryCta?: string | null;
+  /** @nullable */
+  landingDestination?: string | null;
+  assetIds?: string[];
+  externalIds?: CampaignActivityInputExternalIds;
+  configurationAnswers?: CampaignActivityInputConfigurationAnswers;
   authoritativeCostMinor: MinorMoney;
   /**
      * @minLength 3

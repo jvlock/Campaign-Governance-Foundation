@@ -34,6 +34,9 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ManageConfigurationsDialog } from "@/components/activities/ManageConfigurationsDialog";
+import { CreateActivityDialog } from "@/components/activities/CreateActivityDialog";
+import { ActivityList } from "@/components/activities/ActivityList";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -77,14 +80,12 @@ export default function CampaignDetail() {
   const [audiencesOpen, setAudiencesOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
-  const [activityOpen, setActivityOpen] = useState(false);
   const [costOpen, setCostOpen] = useState(false);
 
   const replaceAudiences = useReplaceCampaignAudiences();
   const replaceProducts = useReplaceCampaignProducts();
   const setBudget = useSetCampaignBudget();
   const generatePeriods = useGenerateCampaignPlanningPeriods();
-  const createActivity = useCreateCampaignActivity();
   const createCost = useCreateCampaignCost();
 
   // Queries for governed values
@@ -152,29 +153,6 @@ export default function CampaignDetail() {
       queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
       setBudgetOpen(false);
       toast({ title: "Budget & Periods generated" });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    }
-  };
-
-  const [actName, setActName] = useState("");
-  const [actCost, setActCost] = useState("");
-  const handleCreateActivity = async () => {
-    try {
-      await createActivity.mutateAsync({
-        campaignKey: campaignId,
-        data: {
-          name: actName,
-          deliveryStartDate: campaign?.startDate || new Date().toISOString().split('T')[0],
-          deliveryEndDate: campaign?.endDate || new Date().toISOString().split('T')[0],
-          authoritativeCostMinor: parseDecimalToMinorUnits(actCost),
-          currency: "USD",
-          productValueIds: []
-        }
-      });
-      queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
-      setActivityOpen(false);
-      toast({ title: "Activity created" });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -545,51 +523,24 @@ export default function CampaignDetail() {
           </TabsContent>
 
           <TabsContent value="activities" className="m-0 border-none p-0 outline-none">
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-               <Card className="border shadow-sm flex flex-col h-[500px]">
-                <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between shrink-0">
-                  <div>
-                    <CardTitle className="text-lg">Execution Activities</CardTitle>
-                    <CardDescription>Sub-initiatives and shared costs</CardDescription>
-                  </div>
-                  <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" className="h-8 gap-1"><Plus className="w-3.5 h-3.5" /> Log Activity</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create Activity</DialogTitle>
-                      </DialogHeader>
-                      <div className="py-4 space-y-4">
-                        <div className="space-y-2">
-                          <Label>Name</Label>
-                          <Input value={actName} onChange={e => setActName(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Authoritative Cost</Label>
-                          <Input value={actCost} onChange={e => setActCost(e.target.value)} type="text" />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={handleCreateActivity} disabled={createActivity.isPending || !actName || !actCost}>Save</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </CardHeader>
-                <CardContent className="pt-6 flex-1 flex flex-col overflow-auto">
-                  {!campaign.activities || campaign.activities.length === 0 ? (
-                    <div className="flex-1 flex"><EmptyState icon={<Activity className="w-8 h-8 text-muted-foreground" />} title="No activities recorded" description="Activities represent distinct execution efforts." /></div>
-                  ) : (
-                    <div className="space-y-4 pb-4">
-                      {campaign.activities.map(act => (
-                        <ActivityRow key={act.id} activity={act} campaignId={campaignId} campaign={campaign} />
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+             <div className="flex flex-col gap-8">
+               <Card className="border shadow-sm flex flex-col w-full">
+                 <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between shrink-0">
+                   <div>
+                     <CardTitle className="text-lg">Execution Activities</CardTitle>
+                     <CardDescription>Configure channel activities and executions</CardDescription>
+                   </div>
+                   <div className="flex gap-2">
+                     <ManageConfigurationsDialog />
+                     <CreateActivityDialog campaign={campaign} />
+                   </div>
+                 </CardHeader>
+                 <CardContent className="p-0">
+                   <ActivityList campaign={campaign} />
+                 </CardContent>
+               </Card>
 
-              <Card className="border shadow-sm flex flex-col h-[500px]">
+              <Card className="border shadow-sm flex flex-col w-full">
                 <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between shrink-0">
                   <div>
                     <CardTitle className="text-lg">Authoritative Costs</CardTitle>

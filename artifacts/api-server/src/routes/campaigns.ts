@@ -35,10 +35,13 @@ import {
   activityPeriodAllocationsTable,
   activityProductAssociationsTable,
   campaignActivitiesTable,
+  activityExecutionsTable,
+  activityTypeConfigurationsTable,
   campaignCostDimensionsTable,
   campaignCostsTable,
   campaignHistoryTable,
   campaignPlanningPeriodsTable,
+  fiscalPeriodsTable,
   campaignProductAssociationsTable,
   campaignsTable,
   budgetHistoryTable,
@@ -46,7 +49,8 @@ import {
   governedValuesTable,
   taxonomyReviewRequestsTable,
 } from "@workspace/db";
-import { setupIssues } from "../lib/campaign-domain";
+import { activityAllocation, containsRawPrompt, setupIssues } from "../lib/campaign-domain";
+import { configurationResponse, executionResponse, isProtectedMcpConfiguration } from "./channel-activities";
 
 const router: IRouter = Router();
 router.use(requireMutationAuth);
@@ -160,13 +164,22 @@ router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
     db.select().from(campaignHistoryTable).where(eq(campaignHistoryTable.campaignKey, campaign.campaignKey)).orderBy(desc(campaignHistoryTable.createdAt)),
     db.select().from(budgetHistoryTable).where(eq(budgetHistoryTable.campaignKey, campaign.campaignKey)).orderBy(desc(budgetHistoryTable.createdAt)),
   ]);
-  const [activityProducts, activityAllocations, costDimensions] = await Promise.all([
+  const [activityProducts, activityAllocations, activityExecutions, activityConfigurations, costDimensions] = await Promise.all([
     activities.length
       ? db.select().from(activityProductAssociationsTable).where(inArray(activityProductAssociationsTable.activityId, activities.map((item) => item.id)))
       : Promise.resolve([] as (typeof activityProductAssociationsTable.$inferSelect)[]),
     activities.length
       ? db.select().from(activityPeriodAllocationsTable).where(inArray(activityPeriodAllocationsTable.activityId, activities.map((item) => item.id)))
       : Promise.resolve([] as (typeof activityPeriodAllocationsTable.$inferSelect)[]),
+    activities.length
+      ? db.select().from(activityExecutionsTable).where(inArray(activityExecutionsTable.activityId, activities.map((item) => item.id)))
+      : Promise.resolve([] as (typeof activityExecutionsTable.$inferSelect)[]),
+    activities.some((item) => item.configurationId)
+      ? db.select().from(activityTypeConfigurationsTable).where(inArray(
+        activityTypeConfigurationsTable.id,
+        activities.flatMap((item) => item.configurationId ? [item.configurationId] : []),
+      ))
+      : Promise.resolve([] as (typeof activityTypeConfigurationsTable.$inferSelect)[]),
     costs.length
       ? db.select().from(campaignCostDimensionsTable).where(inArray(campaignCostDimensionsTable.costId, costs.map((item) => item.id)))
       : Promise.resolve([] as (typeof campaignCostDimensionsTable.$inferSelect)[]),
@@ -181,6 +194,10 @@ router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
     )).map((item) => ({
       ...item,
       periodAllocations: activityAllocations.filter((allocation) => allocation.activityId === item.id),
+      executions: activityExecutions.filter((execution) => execution.activityId === item.id).map(executionResponse),
+      configuration: item.configurationId
+        ? configurationResponse(activityConfigurations.find((configuration) => configuration.id === item.configurationId)!)
+        : null,
     })),
     costs: costs.map((item) => ({
       ...item,
@@ -345,8 +362,147 @@ async function validateActivityProducts(campaignKey: string, productValueIds: st
     : null;
 }
 
+function sameStringSet(left: string[], right: string[]): boolean {
+  return left.length === right.length && new Set(left).size === new Set(right).size
+    && left.every((value) => right.includes(value));
+}
+
+function campaignInheritanceError(
+  configuration: ActivityConfiguration | undefined,
+  campaign: typeof campaignsTable.$inferSelect,
+  campaignProductIds: string[],
+  input: { deliveryStartDate: string; deliveryEndDate: string; productValueIds: string[] },
+): string | null {
+  if (!configuration) return null;
+  const inherited = new Set(configuration.inheritableFields);
+  const overrides = new Set(configuration.permittedOverrides);
+  if (inherited.has("deliveryStartDate") && !overrides.has("deliveryStartDate")
+    && campaign.startDate && input.deliveryStartDate !== campaign.startDate) {
+    return "deliveryStartDate is inherited from the campaign and is not a permitted override";
+  }
+  const campaignEnd = campaign.isEvergreen ? campaign.reviewDate : campaign.endDate;
+  if (inherited.has("deliveryEndDate") && !overrides.has("deliveryEndDate")
+    && campaignEnd && input.deliveryEndDate !== campaignEnd) {
+    return "deliveryEndDate is inherited from the campaign and is not a permitted override";
+  }
+  if (inherited.has("productValueIds") && !overrides.has("productValueIds")
+    && !sameStringSet(input.productValueIds, campaignProductIds)) {
+    return "productValueIds are inherited from the campaign and are not a permitted override";
+  }
+  return null;
+}
+
 function activityResponse(row: typeof campaignActivitiesTable.$inferSelect, productValueIds: string[]) {
-  return { ...row, productValueIds, createdAt: row.createdAt.toISOString() };
+  return {
+    ...row,
+    externalIds: row.externalIds as Record<string, unknown>,
+    configurationAnswers: row.configurationAnswers as Record<string, unknown>,
+    productValueIds,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function renderActivityName(template: string, campaignName: string, activityType: string, baseName: string, values: Record<string, unknown>): string {
+  return template.replace(/\{([^}]+)\}/g, (_all, key: string) => {
+    const value = ({ campaign: campaignName, activityType, name: baseName, ...values })[key];
+    if (value == null || typeof value === "object") throw new Error(`Unknown or unusable naming template placeholder: ${key}`);
+    return String(value);
+  });
+}
+
+function nextUtcDate(value: string): string {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function hasFiscalCoverageGap(periods: Array<{ fiscalPeriod: { startDate: string; endDate: string } }>): boolean {
+  return periods.some((period, index) => index > 0
+    && period.fiscalPeriod.startDate !== nextUtcDate(periods[index - 1]!.fiscalPeriod.endDate));
+}
+
+type ActivityConfiguration = typeof activityTypeConfigurationsTable.$inferSelect;
+
+async function validateConfiguredActivity(input: {
+  campaignKey: string;
+  configurationId?: string | null;
+  channelValueId?: string | null;
+  parentActivityId?: string | null;
+  activityType?: string | null;
+  owner?: string | null;
+  status?: string | null;
+  configurationAnswers?: Record<string, unknown>;
+  externalIds?: Record<string, unknown>;
+  landingDestination?: string | null;
+}): Promise<{
+  configuration?: ActivityConfiguration;
+  parent?: typeof campaignActivitiesTable.$inferSelect;
+  error?: string;
+}> {
+  let configuration: ActivityConfiguration | undefined;
+  let parent: typeof campaignActivitiesTable.$inferSelect | undefined;
+  if (input.parentActivityId) {
+    [parent] = await db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, input.parentActivityId));
+    if (!parent || parent.campaignKey !== input.campaignKey) return { error: "Parent activity must belong to the same campaign" };
+  }
+  if (input.configurationId) {
+    [configuration] = await db.select().from(activityTypeConfigurationsTable)
+      .where(eq(activityTypeConfigurationsTable.id, input.configurationId));
+    if (!configuration || configuration.status !== "published") return { error: "Activity configuration must be published" };
+    if (input.activityType && input.activityType !== configuration.stableKey) return { error: "Activity type is determined by its configuration" };
+    if (configuration.channelValueId && configuration.channelValueId !== input.channelValueId) {
+      return { error: "Activity channel must match its governed configuration channel" };
+    }
+    const answers = input.configurationAnswers ?? {};
+    const rules = configuration.validations as { ownerRequired?: boolean; requiredFields?: string[]; allowedStatuses?: string[] };
+    if (rules.ownerRequired && !input.owner) return { error: "owner is required by the activity configuration" };
+    if (rules.requiredFields?.some((field) => {
+      const value = (input as Record<string, unknown>)[field] ?? answers[field];
+      return value == null || value === "";
+    })) return { error: "A required configured field is missing" };
+    const effectiveStatus = input.status ?? "draft";
+    if (rules.allowedStatuses && !rules.allowedStatuses.includes(effectiveStatus)) return { error: "Activity status is not allowed by its configuration" };
+    const questions = configuration.questions as Array<{
+      key: string;
+      required?: boolean;
+      options?: string[];
+      requiredWhen?: { field: string; equals: unknown };
+    }>;
+    for (const question of questions) {
+      const answer = answers[question.key];
+      const conditionallyRequired = question.requiredWhen
+        ? answers[question.requiredWhen.field] === question.requiredWhen.equals
+        : false;
+      if ((question.required || conditionallyRequired) && (answer == null || answer === "")) {
+        return { error: `${question.key} is required by the activity configuration` };
+      }
+      if (answer != null && question.options?.length && !question.options.includes(String(answer))) {
+        return { error: `${question.key} must use a controlled configured value` };
+      }
+    }
+    if (parent) {
+      const supplied = input as Record<string, unknown>;
+      const inherited = parent as unknown as Record<string, unknown>;
+      for (const field of configuration.inheritableFields) {
+        if (supplied[field] != null && supplied[field] !== inherited[field] && !configuration.permittedOverrides.includes(field)) {
+          return { error: `${field} is inherited and is not a permitted override` };
+        }
+      }
+    }
+  }
+  const isMcp = await isProtectedMcpConfiguration(configuration, input.activityType);
+  if (isMcp) {
+    const intentCategory = input.configurationAnswers?.intentCategory;
+    const controlled = ["awareness", "consideration", "evaluation", "conversion", "retention"];
+    if (!controlled.includes(String(intentCategory ?? ""))) return { error: "MCP activities require a controlled intentCategory" };
+    if (containsRawPrompt({
+      configurationAnswers: input.configurationAnswers,
+      externalIds: input.externalIds,
+      landingDestination: input.landingDestination,
+    })) return { error: "MCP configuration, URLs, and analytics fields cannot contain raw prompt text" };
+  }
+  return { configuration, parent };
 }
 
 router.post("/campaigns/:campaignKey/activities", async (req, res): Promise<void> => {
@@ -357,6 +513,12 @@ router.post("/campaigns/:campaignKey/activities", async (req, res): Promise<void
   const deliveryStartDate = dateString(body.data.deliveryStartDate)!;
   const deliveryEndDate = dateString(body.data.deliveryEndDate)!;
   if (deliveryEndDate < deliveryStartDate) { res.status(400).json({ error: "Delivery end cannot precede delivery start" }); return; }
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
+  if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  const campaignEnd = campaign.isEvergreen ? campaign.reviewDate : campaign.endDate;
+  if ((campaign.startDate && deliveryStartDate < campaign.startDate) || (campaignEnd && deliveryEndDate > campaignEnd)) {
+    res.status(400).json({ error: "Activity dates must be within campaign dates" }); return;
+  }
   try {
     if (BigInt(body.data.authoritativeCostMinor) < 0n) throw new Error();
   } catch {
@@ -364,30 +526,81 @@ router.post("/campaigns/:campaignKey/activities", async (req, res): Promise<void
   }
   const productError = await validateActivityProducts(params.data.campaignKey, body.data.productValueIds);
   if (productError) { res.status(400).json({ error: productError }); return; }
+  const configured = await validateConfiguredActivity({ ...body.data, campaignKey: params.data.campaignKey });
+  if (configured.error) { res.status(400).json({ error: configured.error }); return; }
+  const campaignProducts = await db.select().from(campaignProductAssociationsTable)
+    .where(eq(campaignProductAssociationsTable.campaignKey, params.data.campaignKey));
+  const inheritanceError = campaignInheritanceError(
+    configured.configuration,
+    campaign,
+    campaignProducts.map((item) => item.productValueId),
+    { deliveryStartDate, deliveryEndDate, productValueIds: body.data.productValueIds },
+  );
+  if (inheritanceError) { res.status(400).json({ error: inheritanceError }); return; }
   if (body.data.channelValueId) {
     const [channel] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.id, body.data.channelValueId));
     if (!channel || channel.category !== "channel") { res.status(400).json({ error: "Channel must reference a governed channel" }); return; }
   }
   try {
     const row = await db.transaction(async (tx) => {
-      const campaignPeriods = await tx.select({ status: campaignPlanningPeriodsTable.status })
-        .from(campaignPlanningPeriodsTable)
+      const campaignPeriods = await tx.select({ id: campaignPlanningPeriodsTable.id, status: campaignPlanningPeriodsTable.status, fiscalPeriod: fiscalPeriodsTable })
+        .from(campaignPlanningPeriodsTable).innerJoin(fiscalPeriodsTable, eq(fiscalPeriodsTable.id, campaignPlanningPeriodsTable.fiscalPeriodId))
         .where(eq(campaignPlanningPeriodsTable.campaignKey, params.data.campaignKey))
         .for("update");
-      if (campaignPeriods.some((period) => period.status === "closed")) {
+      const touched = campaignPeriods
+        .filter((period) => period.fiscalPeriod.startDate <= deliveryEndDate && period.fiscalPeriod.endDate >= deliveryStartDate)
+        .sort((left, right) => left.fiscalPeriod.startDate.localeCompare(right.fiscalPeriod.startDate));
+      if (touched.some((period) => period.status === "closed")) {
         throw new Error("LOCKED");
       }
+      if (campaignPeriods.length && (!touched.length
+        || touched[0]!.fiscalPeriod.startDate > deliveryStartDate
+        || touched[touched.length - 1]!.fiscalPeriod.endDate < deliveryEndDate
+        || hasFiscalCoverageGap(touched))) {
+        throw new Error("UNCOVERED");
+      }
       const { productValueIds, ...input } = body.data;
+      if (configured.configuration && configured.parent) {
+        const mutableInput = input as Record<string, unknown>;
+        const parent = configured.parent as unknown as Record<string, unknown>;
+        for (const field of configured.configuration.inheritableFields) {
+          if (mutableInput[field] == null && parent[field] != null) mutableInput[field] = parent[field];
+        }
+      }
+      if (configured.configuration) {
+        try {
+          input.name = renderActivityName(
+            configured.configuration.namingTemplate,
+            campaign.name,
+            configured.configuration.stableKey,
+            input.name,
+            { ...(input as Record<string, unknown>), ...(input.configurationAnswers ?? {}) },
+          );
+        } catch (error: any) {
+          throw new Error(`TEMPLATE_ERROR:${error.message}`);
+        }
+      }
       const [created] = await tx.insert(campaignActivitiesTable).values({
         ...input,
+        configurationVersion: configured.configuration?.version,
+        activityType: configured.configuration?.stableKey ?? input.activityType,
         campaignKey: params.data.campaignKey,
         deliveryStartDate,
         deliveryEndDate,
         accountingDate: dateString(input.accountingDate),
+        createdBy: actorId,
+        updatedBy: actorId,
       }).returning();
       if (productValueIds.length) await tx.insert(activityProductAssociationsTable).values(
         productValueIds.map((productValueId) => ({ activityId: created.id, productValueId })),
       );
+      if (campaignPeriods.length) {
+        const allocations = activityAllocation("daily", created.authoritativeCostMinor, deliveryStartDate, deliveryEndDate,
+          touched.map((item) => ({ id: item.id, stableKey: item.fiscalPeriod.stableKey, fiscalYear: item.fiscalPeriod.fiscalYear, fiscalQuarter: item.fiscalPeriod.fiscalQuarter, fiscalPeriod: item.fiscalPeriod.fiscalPeriod, startDate: item.fiscalPeriod.startDate, endDate: item.fiscalPeriod.endDate })));
+        await tx.insert(activityPeriodAllocationsTable).values(allocations.map((allocation) => ({
+          activityId: created.id, campaignPlanningPeriodId: allocation.key, allocationMethod: "daily", amountMinor: allocation.amountMinor,
+        })));
+      }
       await tx.insert(campaignHistoryTable).values({
         campaignKey: created.campaignKey, action: "activity_created", actorId,
         reason: "Campaign activity created", snapshot: { ...created, productValueIds },
@@ -398,6 +611,8 @@ router.post("/campaigns/:campaignKey/activities", async (req, res): Promise<void
   } catch (error: any) {
     if (error.message === "LOCKED") {
       res.status(423).json({ error: "Activities cannot be created while a campaign period is closed" });
+    } else if (error.message === "UNCOVERED") {
+      res.status(409).json({ error: "Activity dates are not fully covered by campaign planning periods" });
     } else {
       req.log.warn({ err: error }, "Unable to create campaign activity");
       res.status(409).json({ error: "Campaign does not exist or activity references are invalid" });
@@ -429,22 +644,82 @@ router.patch("/activities/:activityId", async (req, res): Promise<void> => {
     const row = await db.transaction(async (tx) => {
       const [current] = await tx.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, params.data.activityId));
       if (!current) throw new Error("NOT_FOUND");
+      if (body.data.rowVersion != null && body.data.rowVersion !== current.rowVersion) throw new Error("STALE");
+      const [campaign] = await tx.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, current.campaignKey));
+      if (!campaign) throw new Error("NOT_FOUND");
+      const campaignEnd = campaign.isEvergreen ? campaign.reviewDate : campaign.endDate;
+      if ((campaign.startDate && deliveryStartDate < campaign.startDate) || (campaignEnd && deliveryEndDate > campaignEnd)) {
+        throw new Error("DATE_BOUNDS");
+      }
 
       const productError = await validateActivityProducts(current.campaignKey, body.data.productValueIds);
       if (productError) throw new Error("PRODUCT_ERROR:" + productError);
+      const configured = await validateConfiguredActivity({
+        ...current,
+        ...body.data,
+        configurationAnswers: body.data.configurationAnswers ?? current.configurationAnswers as Record<string, unknown>,
+        externalIds: body.data.externalIds ?? current.externalIds as Record<string, unknown>,
+        campaignKey: current.campaignKey,
+      });
+      if (configured.error) throw new Error("CONFIG_ERROR:" + configured.error);
+      const campaignProducts = await tx.select().from(campaignProductAssociationsTable)
+        .where(eq(campaignProductAssociationsTable.campaignKey, current.campaignKey));
+      const inheritanceError = campaignInheritanceError(
+        configured.configuration,
+        campaign,
+        campaignProducts.map((item) => item.productValueId),
+        { deliveryStartDate, deliveryEndDate, productValueIds: body.data.productValueIds },
+      );
+      if (inheritanceError) throw new Error("CONFIG_ERROR:" + inheritanceError);
 
-      const campaignPeriods = await tx.select({ status: campaignPlanningPeriodsTable.status })
+      const campaignPeriods = await tx.select({
+        id: campaignPlanningPeriodsTable.id,
+        status: campaignPlanningPeriodsTable.status,
+        fiscalPeriod: fiscalPeriodsTable,
+      })
         .from(campaignPlanningPeriodsTable)
+        .innerJoin(fiscalPeriodsTable, eq(fiscalPeriodsTable.id, campaignPlanningPeriodsTable.fiscalPeriodId))
         .where(eq(campaignPlanningPeriodsTable.campaignKey, current.campaignKey))
         .for("update");
-
-      if (campaignPeriods.some((item) => item.status === "closed")) {
+      const existingAllocations = await tx.select({ campaignPlanningPeriodId: activityPeriodAllocationsTable.campaignPlanningPeriodId })
+        .from(activityPeriodAllocationsTable)
+        .where(eq(activityPeriodAllocationsTable.activityId, current.id));
+      const existingPeriodIds = new Set(existingAllocations.map((item) => item.campaignPlanningPeriodId));
+      const touched = campaignPeriods
+        .filter((period) => period.fiscalPeriod.startDate <= deliveryEndDate && period.fiscalPeriod.endDate >= deliveryStartDate)
+        .sort((left, right) => left.fiscalPeriod.startDate.localeCompare(right.fiscalPeriod.startDate));
+      if (campaignPeriods.some((item) => existingPeriodIds.has(item.id) && item.status === "closed")
+        || touched.some((item) => item.status === "closed")) {
         throw new Error("LOCKED");
+      }
+      if (campaignPeriods.length && (!touched.length
+        || touched[0]!.fiscalPeriod.startDate > deliveryStartDate
+        || touched[touched.length - 1]!.fiscalPeriod.endDate < deliveryEndDate
+        || hasFiscalCoverageGap(touched))) {
+        throw new Error("UNCOVERED");
       }
 
       const { productValueIds, reason, ...input } = body.data;
+      if (configured.configuration && input.name !== current.name) {
+        try {
+          input.name = renderActivityName(
+            configured.configuration.namingTemplate,
+            campaign.name,
+            configured.configuration.stableKey,
+            input.name,
+            { ...(input as Record<string, unknown>), ...(input.configurationAnswers ?? {}) },
+          );
+        } catch (error: any) {
+          throw new Error(`TEMPLATE_ERROR:${error.message}`);
+        }
+      }
       const [updated] = await tx.update(campaignActivitiesTable).set({
         ...input,
+        configurationVersion: configured.configuration?.version ?? current.configurationVersion,
+        activityType: configured.configuration?.stableKey ?? input.activityType ?? current.activityType,
+        rowVersion: current.rowVersion + 1,
+        updatedBy: actorId,
+        updatedAt: new Date(),
         deliveryStartDate,
         deliveryEndDate,
         accountingDate: dateString(input.accountingDate),
@@ -454,6 +729,30 @@ router.patch("/activities/:activityId", async (req, res): Promise<void> => {
       if (productValueIds.length) await tx.insert(activityProductAssociationsTable).values(
         productValueIds.map((productValueId) => ({ activityId: current.id, productValueId })),
       );
+      if (campaignPeriods.length) {
+        const allocations = activityAllocation(
+          "daily",
+          updated.authoritativeCostMinor,
+          deliveryStartDate,
+          deliveryEndDate,
+          touched.map((item) => ({
+            id: item.id,
+            stableKey: item.fiscalPeriod.stableKey,
+            fiscalYear: item.fiscalPeriod.fiscalYear,
+            fiscalQuarter: item.fiscalPeriod.fiscalQuarter,
+            fiscalPeriod: item.fiscalPeriod.fiscalPeriod,
+            startDate: item.fiscalPeriod.startDate,
+            endDate: item.fiscalPeriod.endDate,
+          })),
+        );
+        await tx.delete(activityPeriodAllocationsTable).where(eq(activityPeriodAllocationsTable.activityId, current.id));
+        await tx.insert(activityPeriodAllocationsTable).values(allocations.map((allocation) => ({
+          activityId: current.id,
+          campaignPlanningPeriodId: allocation.key,
+          allocationMethod: "daily",
+          amountMinor: allocation.amountMinor,
+        })));
+      }
 
       await tx.insert(campaignHistoryTable).values({
         campaignKey: current.campaignKey, action: "activity_updated", actorId, reason,
@@ -464,8 +763,13 @@ router.patch("/activities/:activityId", async (req, res): Promise<void> => {
     res.json(UpdateCampaignActivityResponse.parse(activityResponse(row, body.data.productValueIds)));
   } catch (error: any) {
     if (error.message === "NOT_FOUND") res.status(404).json({ error: "Activity not found" });
+    else if (error.message === "STALE") res.status(409).json({ error: "Activity was changed by another actor" });
     else if (error.message === "LOCKED") res.status(423).json({ error: "Activities cannot change while a campaign period is closed" });
+    else if (error.message === "DATE_BOUNDS") res.status(400).json({ error: "Activity dates must be within campaign dates" });
+    else if (error.message === "UNCOVERED") res.status(409).json({ error: "Activity dates are not fully covered by campaign planning periods" });
     else if (error.message.startsWith("PRODUCT_ERROR:")) res.status(400).json({ error: error.message.slice(14) });
+    else if (error.message.startsWith("CONFIG_ERROR:")) res.status(400).json({ error: error.message.slice(13) });
+    else if (error.message.startsWith("TEMPLATE_ERROR:")) res.status(400).json({ error: error.message.slice(15) });
     else throw error;
   }
 });

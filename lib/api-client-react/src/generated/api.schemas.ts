@@ -677,6 +677,10 @@ export type ProductAssociation = ProductAssociationInput & {
  */
 export type MinorMoney = string;
 
+export type CampaignActivityInputExternalIds = { [key: string]: unknown };
+
+export type CampaignActivityInputConfigurationAnswers = { [key: string]: unknown };
+
 export interface CampaignActivityInput {
   /** @minLength 1 */
   name: string;
@@ -686,6 +690,32 @@ export interface CampaignActivityInput {
   accountingDate?: string | null;
   /** @nullable */
   channelValueId?: string | null;
+  /** @nullable */
+  parentActivityId?: string | null;
+  /** @nullable */
+  configurationId?: string | null;
+  /** @nullable */
+  activityType?: string | null;
+  /** @nullable */
+  owner?: string | null;
+  /** @nullable */
+  source?: string | null;
+  /** @nullable */
+  platform?: string | null;
+  status?: string;
+  /** @nullable */
+  audienceTreatment?: string | null;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  language?: string | null;
+  /** @nullable */
+  primaryCta?: string | null;
+  /** @nullable */
+  landingDestination?: string | null;
+  assetIds?: string[];
+  externalIds?: CampaignActivityInputExternalIds;
+  configurationAnswers?: CampaignActivityInputConfigurationAnswers;
   authoritativeCostMinor: MinorMoney;
   /**
      * @minLength 3
@@ -695,11 +725,17 @@ export interface CampaignActivityInput {
   productValueIds: string[];
 }
 
-export type CampaignActivity = CampaignActivityInput & {
+export type CampaignActivity = CampaignActivityInput & ({
   id: string;
   campaignKey: string;
+  /** @nullable */
+  configurationVersion?: number | null;
+  rowVersion?: number;
+  createdBy?: string;
+  updatedBy?: string;
   createdAt: string;
-};
+  updatedAt?: string;
+});
 
 export type ActivityPeriodAllocationAllocationMethod = typeof ActivityPeriodAllocationAllocationMethod[keyof typeof ActivityPeriodAllocationAllocationMethod];
 
@@ -721,9 +757,100 @@ export interface ActivityPeriodAllocation {
   accountingDate?: string | null;
 }
 
-export type CampaignActivityDetail = CampaignActivity & {
-  periodAllocations: ActivityPeriodAllocation[];
+export type ActivityExecutionInputCreativeLineage = { [key: string]: unknown };
+
+export type ActivityExecutionInputCopyLineage = { [key: string]: unknown };
+
+export type ActivityExecutionInputExternalIds = { [key: string]: unknown };
+
+export type ActivityExecutionInputConfigurationData = { [key: string]: unknown };
+
+export interface ActivityExecutionInput {
+  /** @minLength 1 */
+  name: string;
+  status?: string;
+  creativeLineage?: ActivityExecutionInputCreativeLineage;
+  copyLineage?: ActivityExecutionInputCopyLineage;
+  assetIds?: string[];
+  externalIds?: ActivityExecutionInputExternalIds;
+  configurationData?: ActivityExecutionInputConfigurationData;
+}
+
+export type ActivityExecution = ActivityExecutionInput & ({
+  executionKey: string;
+  activityId: string;
+  versionNumber: number;
+  /** @nullable */
+  copiedFromExecutionKey?: string | null;
+  /** @nullable */
+  previousVersionExecutionKey?: string | null;
+  rowVersion: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+});
+
+export type ActivityConfigurationQuestionRequiredWhen = {
+  field: string;
+  equals: unknown;
 };
+
+export interface ActivityConfigurationQuestion {
+  /** @minLength 1 */
+  key: string;
+  label?: string;
+  required?: boolean;
+  options?: string[];
+  requiredWhen?: ActivityConfigurationQuestionRequiredWhen;
+}
+
+export type ActivityTypeConfigurationInputValidations = { [key: string]: unknown };
+
+export interface ActivityTypeConfigurationInput {
+  /** @minLength 2 */
+  stableKey: string;
+  /** @minLength 1 */
+  displayName: string;
+  /** @nullable */
+  channelValueId?: string | null;
+  /** @minimum 1 */
+  version: number;
+  questions: ActivityConfigurationQuestion[];
+  validations: ActivityTypeConfigurationInputValidations;
+  /** @minLength 1 */
+  namingTemplate: string;
+  memberStatuses: string[];
+  inheritableFields: string[];
+  permittedOverrides: string[];
+}
+
+export type ActivityTypeConfigurationStatus = typeof ActivityTypeConfigurationStatus[keyof typeof ActivityTypeConfigurationStatus];
+
+
+export const ActivityTypeConfigurationStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export type ActivityTypeConfiguration = ActivityTypeConfigurationInput & ({
+  id: string;
+  status: ActivityTypeConfigurationStatus;
+  createdBy: string;
+  updatedBy: string;
+  /** @nullable */
+  publishedBy?: string | null;
+  /** @nullable */
+  publishedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+});
+
+export type CampaignActivityDetail = CampaignActivity & ({
+  periodAllocations: ActivityPeriodAllocation[];
+  executions: ActivityExecution[];
+  configuration?: ActivityTypeConfiguration | null;
+});
 
 export interface CampaignCostInput {
   /** @minLength 1 */
@@ -863,7 +990,30 @@ export interface ProductPlanInput {
 export type CampaignActivityUpdate = CampaignActivityInput & {
   /** @minLength 1 */
   reason: string;
+  /** @minimum 1 */
+  rowVersion?: number;
 };
+
+export interface ActivityTypeConfigurationPublish {
+  /** @minLength 1 */
+  reason: string;
+}
+
+export type ActivityExecutionUpdate = ActivityExecutionInput & {
+  /** @minimum 1 */
+  rowVersion: number;
+};
+
+export interface ActivityExecutionCopy {
+  /** @minLength 1 */
+  name?: string;
+  targetActivityId?: string;
+}
+
+export interface ActivityExecutionVersion {
+  /** @minLength 1 */
+  name?: string;
+}
 
 export type CampaignCostUpdate = CampaignCostInput & {
   /** @minLength 1 */
@@ -1078,4 +1228,16 @@ export type ListCampaignsParams = {
 search?: string;
 status?: string;
 };
+
+export type ListActivityTypeConfigurationsParams = {
+status?: ListActivityTypeConfigurationsStatus;
+};
+
+export type ListActivityTypeConfigurationsStatus = typeof ListActivityTypeConfigurationsStatus[keyof typeof ListActivityTypeConfigurationsStatus];
+
+
+export const ListActivityTypeConfigurationsStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
 

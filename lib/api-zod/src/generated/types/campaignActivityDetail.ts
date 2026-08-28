@@ -5,9 +5,13 @@
  * Campaign Governance API
  * OpenAPI spec version: 0.2.0
  */
+import type { ActivityExecution } from './activityExecution';
 import type { ActivityPeriodAllocation } from './activityPeriodAllocation';
+import type { ActivityTypeConfiguration } from './activityTypeConfiguration';
 import type { CampaignActivity } from './campaignActivity';
 
-export type CampaignActivityDetail = CampaignActivity & {
+export type CampaignActivityDetail = CampaignActivity & ({
   periodAllocations: ActivityPeriodAllocation[];
-};
+  executions: ActivityExecution[];
+  configuration?: ActivityTypeConfiguration | null;
+});

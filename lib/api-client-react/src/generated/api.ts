@@ -21,7 +21,15 @@ import type {
 
 import type {
   ActivityAllocationInput,
+  ActivityExecution,
+  ActivityExecutionCopy,
+  ActivityExecutionInput,
+  ActivityExecutionUpdate,
+  ActivityExecutionVersion,
   ActivityPeriodAllocation,
+  ActivityTypeConfiguration,
+  ActivityTypeConfigurationInput,
+  ActivityTypeConfigurationPublish,
   AudiencePlanInput,
   AudienceSelection,
   AuthUserEnvelope,
@@ -58,6 +66,7 @@ import type {
   GovernedValueUpdate,
   HealthStatus,
   LegacyTaxonomyValue,
+  ListActivityTypeConfigurationsParams,
   ListCampaignsParams,
   ListGovernedValuesParams,
   ListTaxonomyValuesParams,
@@ -2070,6 +2079,215 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateCampaignMutationOptions(options));
     }
 
+export const getListActivityTypeConfigurationsUrl = (params?: ListActivityTypeConfigurationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/activity-type-configurations?${stringifiedParams}` : `/api/activity-type-configurations`
+}
+
+export const listActivityTypeConfigurations = async (params?: ListActivityTypeConfigurationsParams, options?: Parameters<typeof customFetch>[1]): Promise<ActivityTypeConfiguration[]> => {
+
+  return customFetch<ActivityTypeConfiguration[]>(getListActivityTypeConfigurationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListActivityTypeConfigurationsQueryKey = (params?: ListActivityTypeConfigurationsParams,) => {
+    return [
+    `/api/activity-type-configurations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListActivityTypeConfigurationsQueryOptions = <TData = Awaited<ReturnType<typeof listActivityTypeConfigurations>>, TError = ErrorType<unknown>>(params?: ListActivityTypeConfigurationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivityTypeConfigurations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListActivityTypeConfigurationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivityTypeConfigurations>>> = ({ signal }) => listActivityTypeConfigurations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listActivityTypeConfigurations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListActivityTypeConfigurationsQueryResult = NonNullable<Awaited<ReturnType<typeof listActivityTypeConfigurations>>>
+export type ListActivityTypeConfigurationsQueryError = ErrorType<unknown>
+
+
+
+export function useListActivityTypeConfigurations<TData = Awaited<ReturnType<typeof listActivityTypeConfigurations>>, TError = ErrorType<unknown>>(
+ params?: ListActivityTypeConfigurationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivityTypeConfigurations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListActivityTypeConfigurationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateActivityTypeConfigurationUrl = () => {
+
+
+
+
+  return `/api/activity-type-configurations`
+}
+
+export const createActivityTypeConfiguration = async (activityTypeConfigurationInput: ActivityTypeConfigurationInput, options?: Parameters<typeof customFetch>[1]): Promise<ActivityTypeConfiguration> => {
+
+  return customFetch<ActivityTypeConfiguration>(getCreateActivityTypeConfigurationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(activityTypeConfigurationInput)
+  }
+);}
+
+
+
+
+
+export const getCreateActivityTypeConfigurationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createActivityTypeConfiguration>>, TError,{data: BodyType<ActivityTypeConfigurationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createActivityTypeConfiguration>>, TError,{data: BodyType<ActivityTypeConfigurationInput>}, TContext> => {
+
+const mutationKey = ['createActivityTypeConfiguration'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createActivityTypeConfiguration>>, {data: BodyType<ActivityTypeConfigurationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createActivityTypeConfiguration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateActivityTypeConfigurationMutationResult = NonNullable<Awaited<ReturnType<typeof createActivityTypeConfiguration>>>
+    export type CreateActivityTypeConfigurationMutationBody = BodyType<ActivityTypeConfigurationInput>
+    export type CreateActivityTypeConfigurationMutationError = ErrorType<void>
+
+    export const useCreateActivityTypeConfiguration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createActivityTypeConfiguration>>, TError,{data: BodyType<ActivityTypeConfigurationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createActivityTypeConfiguration>>,
+        TError,
+        {data: BodyType<ActivityTypeConfigurationInput>},
+        TContext
+      > => {
+      return useMutation(getCreateActivityTypeConfigurationMutationOptions(options));
+    }
+
+export const getPublishActivityTypeConfigurationUrl = (configurationId: string,) => {
+
+
+
+
+  return `/api/activity-type-configurations/${configurationId}/publish`
+}
+
+export const publishActivityTypeConfiguration = async (configurationId: string,
+    activityTypeConfigurationPublish: ActivityTypeConfigurationPublish, options?: Parameters<typeof customFetch>[1]): Promise<ActivityTypeConfiguration> => {
+
+  return customFetch<ActivityTypeConfiguration>(getPublishActivityTypeConfigurationUrl(configurationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(activityTypeConfigurationPublish)
+  }
+);}
+
+
+
+
+
+export const getPublishActivityTypeConfigurationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishActivityTypeConfiguration>>, TError,{configurationId: string;data: BodyType<ActivityTypeConfigurationPublish>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishActivityTypeConfiguration>>, TError,{configurationId: string;data: BodyType<ActivityTypeConfigurationPublish>}, TContext> => {
+
+const mutationKey = ['publishActivityTypeConfiguration'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishActivityTypeConfiguration>>, {configurationId: string;data: BodyType<ActivityTypeConfigurationPublish>}> = (props) => {
+          const {configurationId,data} = props ?? {};
+
+          return  publishActivityTypeConfiguration(configurationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishActivityTypeConfigurationMutationResult = NonNullable<Awaited<ReturnType<typeof publishActivityTypeConfiguration>>>
+    export type PublishActivityTypeConfigurationMutationBody = BodyType<ActivityTypeConfigurationPublish>
+    export type PublishActivityTypeConfigurationMutationError = ErrorType<void>
+
+    export const usePublishActivityTypeConfiguration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishActivityTypeConfiguration>>, TError,{configurationId: string;data: BodyType<ActivityTypeConfigurationPublish>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishActivityTypeConfiguration>>,
+        TError,
+        {configurationId: string;data: BodyType<ActivityTypeConfigurationPublish>},
+        TContext
+      > => {
+      return useMutation(getPublishActivityTypeConfigurationMutationOptions(options));
+    }
+
 export const getGetCampaignUrl = (campaignKey: string,) => {
 
 
@@ -2671,6 +2889,341 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdateCampaignActivityMutationOptions(options));
+    }
+
+export const getListActivityExecutionsUrl = (activityId: string,) => {
+
+
+
+
+  return `/api/activities/${activityId}/executions`
+}
+
+export const listActivityExecutions = async (activityId: string, options?: Parameters<typeof customFetch>[1]): Promise<ActivityExecution[]> => {
+
+  return customFetch<ActivityExecution[]>(getListActivityExecutionsUrl(activityId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListActivityExecutionsQueryKey = (activityId: string,) => {
+    return [
+    `/api/activities/${activityId}/executions`
+    ] as const;
+    }
+
+
+export const getListActivityExecutionsQueryOptions = <TData = Awaited<ReturnType<typeof listActivityExecutions>>, TError = ErrorType<unknown>>(activityId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivityExecutions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListActivityExecutionsQueryKey(activityId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivityExecutions>>> = ({ signal }) => listActivityExecutions(activityId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: activityId !== null && activityId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listActivityExecutions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListActivityExecutionsQueryResult = NonNullable<Awaited<ReturnType<typeof listActivityExecutions>>>
+export type ListActivityExecutionsQueryError = ErrorType<unknown>
+
+
+
+export function useListActivityExecutions<TData = Awaited<ReturnType<typeof listActivityExecutions>>, TError = ErrorType<unknown>>(
+ activityId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listActivityExecutions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListActivityExecutionsQueryOptions(activityId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateActivityExecutionUrl = (activityId: string,) => {
+
+
+
+
+  return `/api/activities/${activityId}/executions`
+}
+
+export const createActivityExecution = async (activityId: string,
+    activityExecutionInput: ActivityExecutionInput, options?: Parameters<typeof customFetch>[1]): Promise<ActivityExecution> => {
+
+  return customFetch<ActivityExecution>(getCreateActivityExecutionUrl(activityId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(activityExecutionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateActivityExecutionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createActivityExecution>>, TError,{activityId: string;data: BodyType<ActivityExecutionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createActivityExecution>>, TError,{activityId: string;data: BodyType<ActivityExecutionInput>}, TContext> => {
+
+const mutationKey = ['createActivityExecution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createActivityExecution>>, {activityId: string;data: BodyType<ActivityExecutionInput>}> = (props) => {
+          const {activityId,data} = props ?? {};
+
+          return  createActivityExecution(activityId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateActivityExecutionMutationResult = NonNullable<Awaited<ReturnType<typeof createActivityExecution>>>
+    export type CreateActivityExecutionMutationBody = BodyType<ActivityExecutionInput>
+    export type CreateActivityExecutionMutationError = ErrorType<unknown>
+
+    export const useCreateActivityExecution = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createActivityExecution>>, TError,{activityId: string;data: BodyType<ActivityExecutionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createActivityExecution>>,
+        TError,
+        {activityId: string;data: BodyType<ActivityExecutionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateActivityExecutionMutationOptions(options));
+    }
+
+export const getUpdateActivityExecutionUrl = (executionKey: string,) => {
+
+
+
+
+  return `/api/executions/${executionKey}`
+}
+
+export const updateActivityExecution = async (executionKey: string,
+    activityExecutionUpdate: ActivityExecutionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ActivityExecution> => {
+
+  return customFetch<ActivityExecution>(getUpdateActivityExecutionUrl(executionKey),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(activityExecutionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateActivityExecutionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionUpdate>}, TContext> => {
+
+const mutationKey = ['updateActivityExecution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateActivityExecution>>, {executionKey: string;data: BodyType<ActivityExecutionUpdate>}> = (props) => {
+          const {executionKey,data} = props ?? {};
+
+          return  updateActivityExecution(executionKey,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateActivityExecutionMutationResult = NonNullable<Awaited<ReturnType<typeof updateActivityExecution>>>
+    export type UpdateActivityExecutionMutationBody = BodyType<ActivityExecutionUpdate>
+    export type UpdateActivityExecutionMutationError = ErrorType<void>
+
+    export const useUpdateActivityExecution = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateActivityExecution>>,
+        TError,
+        {executionKey: string;data: BodyType<ActivityExecutionUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateActivityExecutionMutationOptions(options));
+    }
+
+export const getCopyActivityExecutionUrl = (executionKey: string,) => {
+
+
+
+
+  return `/api/executions/${executionKey}/copy`
+}
+
+export const copyActivityExecution = async (executionKey: string,
+    activityExecutionCopy: ActivityExecutionCopy, options?: Parameters<typeof customFetch>[1]): Promise<ActivityExecution> => {
+
+  return customFetch<ActivityExecution>(getCopyActivityExecutionUrl(executionKey),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(activityExecutionCopy)
+  }
+);}
+
+
+
+
+
+export const getCopyActivityExecutionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof copyActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionCopy>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof copyActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionCopy>}, TContext> => {
+
+const mutationKey = ['copyActivityExecution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof copyActivityExecution>>, {executionKey: string;data: BodyType<ActivityExecutionCopy>}> = (props) => {
+          const {executionKey,data} = props ?? {};
+
+          return  copyActivityExecution(executionKey,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CopyActivityExecutionMutationResult = NonNullable<Awaited<ReturnType<typeof copyActivityExecution>>>
+    export type CopyActivityExecutionMutationBody = BodyType<ActivityExecutionCopy>
+    export type CopyActivityExecutionMutationError = ErrorType<unknown>
+
+    export const useCopyActivityExecution = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof copyActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionCopy>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof copyActivityExecution>>,
+        TError,
+        {executionKey: string;data: BodyType<ActivityExecutionCopy>},
+        TContext
+      > => {
+      return useMutation(getCopyActivityExecutionMutationOptions(options));
+    }
+
+export const getVersionActivityExecutionUrl = (executionKey: string,) => {
+
+
+
+
+  return `/api/executions/${executionKey}/versions`
+}
+
+export const versionActivityExecution = async (executionKey: string,
+    activityExecutionVersion: ActivityExecutionVersion, options?: Parameters<typeof customFetch>[1]): Promise<ActivityExecution> => {
+
+  return customFetch<ActivityExecution>(getVersionActivityExecutionUrl(executionKey),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(activityExecutionVersion)
+  }
+);}
+
+
+
+
+
+export const getVersionActivityExecutionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof versionActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionVersion>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof versionActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionVersion>}, TContext> => {
+
+const mutationKey = ['versionActivityExecution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof versionActivityExecution>>, {executionKey: string;data: BodyType<ActivityExecutionVersion>}> = (props) => {
+          const {executionKey,data} = props ?? {};
+
+          return  versionActivityExecution(executionKey,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VersionActivityExecutionMutationResult = NonNullable<Awaited<ReturnType<typeof versionActivityExecution>>>
+    export type VersionActivityExecutionMutationBody = BodyType<ActivityExecutionVersion>
+    export type VersionActivityExecutionMutationError = ErrorType<unknown>
+
+    export const useVersionActivityExecution = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof versionActivityExecution>>, TError,{executionKey: string;data: BodyType<ActivityExecutionVersion>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof versionActivityExecution>>,
+        TError,
+        {executionKey: string;data: BodyType<ActivityExecutionVersion>},
+        TContext
+      > => {
+      return useMutation(getVersionActivityExecutionMutationOptions(options));
     }
 
 export const getCreateCampaignCostUrl = (campaignKey: string,) => {

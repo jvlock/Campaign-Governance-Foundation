@@ -557,6 +557,172 @@ export const CreateCampaignResponse = zod.object({
 })
 
 
+export const ListActivityTypeConfigurationsQueryParams = zod.object({
+  "status": zod.enum(['draft', 'published']).optional()
+})
+
+export const listActivityTypeConfigurationsResponseOneStableKeyMin = 2;
+
+
+
+
+
+
+
+export const ListActivityTypeConfigurationsResponseItem = zod.object({
+  "stableKey": zod.string().min(listActivityTypeConfigurationsResponseOneStableKeyMin),
+  "displayName": zod.string().min(1),
+  "channelValueId": zod.string().nullish(),
+  "version": zod.number().min(1),
+  "questions": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "label": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional(),
+  "requiredWhen": zod.object({
+  "field": zod.string(),
+  "equals": zod.unknown()
+}).optional()
+})),
+  "validations": zod.record(zod.string(), zod.unknown()),
+  "namingTemplate": zod.string().min(1),
+  "memberStatuses": zod.array(zod.string()),
+  "inheritableFields": zod.array(zod.string()),
+  "permittedOverrides": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "publishedBy": zod.string().nullish(),
+  "publishedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListActivityTypeConfigurationsResponse = zod.array(ListActivityTypeConfigurationsResponseItem)
+
+
+export const createActivityTypeConfigurationBodyStableKeyMin = 2;
+
+
+
+
+
+
+
+export const CreateActivityTypeConfigurationBody = zod.object({
+  "stableKey": zod.string().min(createActivityTypeConfigurationBodyStableKeyMin),
+  "displayName": zod.string().min(1),
+  "channelValueId": zod.string().nullish(),
+  "version": zod.number().min(1),
+  "questions": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "label": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional(),
+  "requiredWhen": zod.object({
+  "field": zod.string(),
+  "equals": zod.unknown()
+}).optional()
+})),
+  "validations": zod.record(zod.string(), zod.unknown()),
+  "namingTemplate": zod.string().min(1),
+  "memberStatuses": zod.array(zod.string()),
+  "inheritableFields": zod.array(zod.string()),
+  "permittedOverrides": zod.array(zod.string())
+})
+
+export const createActivityTypeConfigurationResponseOneStableKeyMin = 2;
+
+
+
+
+
+
+
+export const CreateActivityTypeConfigurationResponse = zod.object({
+  "stableKey": zod.string().min(createActivityTypeConfigurationResponseOneStableKeyMin),
+  "displayName": zod.string().min(1),
+  "channelValueId": zod.string().nullish(),
+  "version": zod.number().min(1),
+  "questions": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "label": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional(),
+  "requiredWhen": zod.object({
+  "field": zod.string(),
+  "equals": zod.unknown()
+}).optional()
+})),
+  "validations": zod.record(zod.string(), zod.unknown()),
+  "namingTemplate": zod.string().min(1),
+  "memberStatuses": zod.array(zod.string()),
+  "inheritableFields": zod.array(zod.string()),
+  "permittedOverrides": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "publishedBy": zod.string().nullish(),
+  "publishedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const PublishActivityTypeConfigurationParams = zod.object({
+  "configurationId": zod.coerce.string()
+})
+
+
+
+
+export const PublishActivityTypeConfigurationBody = zod.object({
+  "reason": zod.string().min(1)
+})
+
+export const publishActivityTypeConfigurationResponseOneStableKeyMin = 2;
+
+
+
+
+
+
+
+export const PublishActivityTypeConfigurationResponse = zod.object({
+  "stableKey": zod.string().min(publishActivityTypeConfigurationResponseOneStableKeyMin),
+  "displayName": zod.string().min(1),
+  "channelValueId": zod.string().nullish(),
+  "version": zod.number().min(1),
+  "questions": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "label": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional(),
+  "requiredWhen": zod.object({
+  "field": zod.string(),
+  "equals": zod.unknown()
+}).optional()
+})),
+  "validations": zod.record(zod.string(), zod.unknown()),
+  "namingTemplate": zod.string().min(1),
+  "memberStatuses": zod.array(zod.string()),
+  "inheritableFields": zod.array(zod.string()),
+  "permittedOverrides": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "publishedBy": zod.string().nullish(),
+  "publishedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
 export const GetCampaignParams = zod.object({
   "campaignKey": zod.coerce.string()
 })
@@ -569,6 +735,13 @@ export const getCampaignResponseTwoActivitiesItemOneOneCurrencyMin = 3;
 export const getCampaignResponseTwoActivitiesItemOneOneCurrencyMax = 3;
 
 export const getCampaignResponseTwoActivitiesItemTwoPeriodAllocationsItemAmountMinorRegExp = new RegExp('^-?[0-9]+$');
+
+export const getCampaignResponseTwoActivitiesItemTwoConfigurationOneOneStableKeyMin = 2;
+
+
+
+
+
 
 export const getCampaignResponseTwoCostsItemOneOneAuthoritativeAmountMinorRegExp = new RegExp('^-?[0-9]+$');
 export const getCampaignResponseTwoCostsItemOneOneCurrencyMin = 3;
@@ -642,13 +815,33 @@ export const GetCampaignResponse = zod.object({
   "deliveryEndDate": zod.coerce.date(),
   "accountingDate": zod.coerce.date().nullish(),
   "channelValueId": zod.string().nullish(),
+  "parentActivityId": zod.string().nullish(),
+  "configurationId": zod.string().nullish(),
+  "activityType": zod.string().nullish(),
+  "owner": zod.string().nullish(),
+  "source": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "audienceTreatment": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "primaryCta": zod.string().nullish(),
+  "landingDestination": zod.string().nullish(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationAnswers": zod.record(zod.string(), zod.unknown()).optional(),
   "authoritativeCostMinor": zod.string().regex(getCampaignResponseTwoActivitiesItemOneOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "currency": zod.string().min(getCampaignResponseTwoActivitiesItemOneOneCurrencyMin).max(getCampaignResponseTwoActivitiesItemOneOneCurrencyMax),
   "productValueIds": zod.array(zod.string())
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
-  "createdAt": zod.coerce.date()
+  "configurationVersion": zod.number().nullish(),
+  "rowVersion": zod.number().optional(),
+  "createdBy": zod.string().optional(),
+  "updatedBy": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
 })).and(zod.object({
   "periodAllocations": zod.array(zod.object({
   "id": zod.string(),
@@ -657,7 +850,57 @@ export const GetCampaignResponse = zod.object({
   "allocationMethod": zod.enum(['invoice_date', 'daily', 'monthly', 'custom']),
   "amountMinor": zod.string().regex(getCampaignResponseTwoActivitiesItemTwoPeriodAllocationsItemAmountMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "accountingDate": zod.coerce.date().nullish()
-}))
+})),
+  "executions": zod.array(zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))),
+  "configuration": zod.union([zod.object({
+  "stableKey": zod.string().min(getCampaignResponseTwoActivitiesItemTwoConfigurationOneOneStableKeyMin),
+  "displayName": zod.string().min(1),
+  "channelValueId": zod.string().nullish(),
+  "version": zod.number().min(1),
+  "questions": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "label": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional(),
+  "requiredWhen": zod.object({
+  "field": zod.string(),
+  "equals": zod.unknown()
+}).optional()
+})),
+  "validations": zod.record(zod.string(), zod.unknown()),
+  "namingTemplate": zod.string().min(1),
+  "memberStatuses": zod.array(zod.string()),
+  "inheritableFields": zod.array(zod.string()),
+  "permittedOverrides": zod.array(zod.string())
+}).and(zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "publishedBy": zod.string().nullish(),
+  "publishedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),zod.null()]).optional()
 }))),
   "costs": zod.array(zod.object({
   "description": zod.string().min(1),
@@ -929,6 +1172,21 @@ export const CreateCampaignActivityBody = zod.object({
   "deliveryEndDate": zod.coerce.date(),
   "accountingDate": zod.coerce.date().nullish(),
   "channelValueId": zod.string().nullish(),
+  "parentActivityId": zod.string().nullish(),
+  "configurationId": zod.string().nullish(),
+  "activityType": zod.string().nullish(),
+  "owner": zod.string().nullish(),
+  "source": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "audienceTreatment": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "primaryCta": zod.string().nullish(),
+  "landingDestination": zod.string().nullish(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationAnswers": zod.record(zod.string(), zod.unknown()).optional(),
   "authoritativeCostMinor": zod.string().regex(createCampaignActivityBodyAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "currency": zod.string().min(createCampaignActivityBodyCurrencyMin).max(createCampaignActivityBodyCurrencyMax),
   "productValueIds": zod.array(zod.string())
@@ -947,13 +1205,33 @@ export const CreateCampaignActivityResponse = zod.object({
   "deliveryEndDate": zod.coerce.date(),
   "accountingDate": zod.coerce.date().nullish(),
   "channelValueId": zod.string().nullish(),
+  "parentActivityId": zod.string().nullish(),
+  "configurationId": zod.string().nullish(),
+  "activityType": zod.string().nullish(),
+  "owner": zod.string().nullish(),
+  "source": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "audienceTreatment": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "primaryCta": zod.string().nullish(),
+  "landingDestination": zod.string().nullish(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationAnswers": zod.record(zod.string(), zod.unknown()).optional(),
   "authoritativeCostMinor": zod.string().regex(createCampaignActivityResponseOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "currency": zod.string().min(createCampaignActivityResponseOneCurrencyMin).max(createCampaignActivityResponseOneCurrencyMax),
   "productValueIds": zod.array(zod.string())
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
-  "createdAt": zod.coerce.date()
+  "configurationVersion": zod.number().nullish(),
+  "rowVersion": zod.number().optional(),
+  "createdBy": zod.string().optional(),
+  "updatedBy": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
 }))
 
 
@@ -969,17 +1247,34 @@ export const updateCampaignActivityBodyOneCurrencyMax = 3;
 
 
 
+
 export const UpdateCampaignActivityBody = zod.object({
   "name": zod.string().min(1),
   "deliveryStartDate": zod.coerce.date(),
   "deliveryEndDate": zod.coerce.date(),
   "accountingDate": zod.coerce.date().nullish(),
   "channelValueId": zod.string().nullish(),
+  "parentActivityId": zod.string().nullish(),
+  "configurationId": zod.string().nullish(),
+  "activityType": zod.string().nullish(),
+  "owner": zod.string().nullish(),
+  "source": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "audienceTreatment": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "primaryCta": zod.string().nullish(),
+  "landingDestination": zod.string().nullish(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationAnswers": zod.record(zod.string(), zod.unknown()).optional(),
   "authoritativeCostMinor": zod.string().regex(updateCampaignActivityBodyOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "currency": zod.string().min(updateCampaignActivityBodyOneCurrencyMin).max(updateCampaignActivityBodyOneCurrencyMax),
   "productValueIds": zod.array(zod.string())
 }).and(zod.object({
-  "reason": zod.string().min(1)
+  "reason": zod.string().min(1),
+  "rowVersion": zod.number().min(1).optional()
 }))
 
 
@@ -995,13 +1290,223 @@ export const UpdateCampaignActivityResponse = zod.object({
   "deliveryEndDate": zod.coerce.date(),
   "accountingDate": zod.coerce.date().nullish(),
   "channelValueId": zod.string().nullish(),
+  "parentActivityId": zod.string().nullish(),
+  "configurationId": zod.string().nullish(),
+  "activityType": zod.string().nullish(),
+  "owner": zod.string().nullish(),
+  "source": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "status": zod.string().optional(),
+  "audienceTreatment": zod.string().nullish(),
+  "region": zod.string().nullish(),
+  "language": zod.string().nullish(),
+  "primaryCta": zod.string().nullish(),
+  "landingDestination": zod.string().nullish(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationAnswers": zod.record(zod.string(), zod.unknown()).optional(),
   "authoritativeCostMinor": zod.string().regex(updateCampaignActivityResponseOneAuthoritativeCostMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "currency": zod.string().min(updateCampaignActivityResponseOneCurrencyMin).max(updateCampaignActivityResponseOneCurrencyMax),
   "productValueIds": zod.array(zod.string())
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
-  "createdAt": zod.coerce.date()
+  "configurationVersion": zod.number().nullish(),
+  "rowVersion": zod.number().optional(),
+  "createdBy": zod.string().optional(),
+  "updatedBy": zod.string().optional(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+}))
+
+
+export const ListActivityExecutionsParams = zod.object({
+  "activityId": zod.coerce.string()
+})
+
+
+
+
+export const ListActivityExecutionsResponseItem = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListActivityExecutionsResponse = zod.array(ListActivityExecutionsResponseItem)
+
+
+export const CreateActivityExecutionParams = zod.object({
+  "activityId": zod.coerce.string()
+})
+
+
+
+
+export const CreateActivityExecutionBody = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+
+
+
+export const CreateActivityExecutionResponse = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const UpdateActivityExecutionParams = zod.object({
+  "executionKey": zod.coerce.string()
+})
+
+
+
+
+
+export const UpdateActivityExecutionBody = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "rowVersion": zod.number().min(1)
+}))
+
+
+
+
+export const UpdateActivityExecutionResponse = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const CopyActivityExecutionParams = zod.object({
+  "executionKey": zod.coerce.string()
+})
+
+
+
+
+export const CopyActivityExecutionBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "targetActivityId": zod.string().optional()
+})
+
+
+
+
+export const CopyActivityExecutionResponse = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const VersionActivityExecutionParams = zod.object({
+  "executionKey": zod.coerce.string()
+})
+
+
+
+
+export const VersionActivityExecutionBody = zod.object({
+  "name": zod.string().min(1).optional()
+})
+
+
+
+
+export const VersionActivityExecutionResponse = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 }))
 
 

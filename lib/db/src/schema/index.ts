@@ -24,3 +24,4 @@ export * from "./taxonomy-governance";
 export * from "./campaign-registry";
 export * from "./campaign-planning";
 export * from "./campaign-budgeting";
+export * from "./channel-activities";
