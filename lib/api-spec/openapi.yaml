@@ -1,22 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Campaign Governance foundation API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: foundation
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
+      summary: Check application and database health
       responses:
         "200":
           description: Healthy
@@ -24,13 +22,138 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /foundation/summary:
+    get:
+      operationId: getFoundationSummary
+      tags: [foundation]
+      summary: Get foundation readiness and governed data counts
+      responses:
+        "200":
+          description: Foundation summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FoundationSummary"
+  /foundation/taxonomies:
+    get:
+      operationId: listTaxonomyValues
+      tags: [foundation]
+      summary: List governed taxonomy values
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TaxonomyType"
+      responses:
+        "200":
+          description: Governed taxonomy values
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaxonomyValue"
+  /foundation/activity:
+    get:
+      operationId: listFoundationActivity
+      tags: [foundation]
+      summary: List recent foundation decisions and evidence
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FoundationActivity"
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status, application, database, checkedAt]
       properties:
         status:
           type: string
-      required:
-        - status
-
+          enum: [ok, degraded]
+        application:
+          type: string
+          enum: [reachable]
+        database:
+          type: string
+          enum: [reachable, unreachable]
+        checkedAt:
+          type: string
+          format: date-time
+    TaxonomyType:
+      type: string
+      enum: [segment, persona, product, region, channel]
+    TaxonomyValue:
+      type: object
+      required: [id, type, code, label, status, source, taxonomyVersion]
+      properties:
+        id:
+          type: string
+        type:
+          $ref: "#/components/schemas/TaxonomyType"
+        code:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, retired, superseded]
+        source:
+          type: string
+        taxonomyVersion:
+          type: string
+        notes:
+          type: ["string", "null"]
+    FoundationSummary:
+      type: object
+      required: [phase, readiness, governedValues, taxonomyVersion, principles]
+      properties:
+        phase:
+          type: string
+        readiness:
+          type: object
+          required: [applicationShell, database, api, documentation, testing]
+          properties:
+            applicationShell: { type: string }
+            database: { type: string }
+            api: { type: string }
+            documentation: { type: string }
+            testing: { type: string }
+        governedValues:
+          type: object
+          additionalProperties:
+            type: number
+        taxonomyVersion:
+          type: string
+        principles:
+          type: array
+          items:
+            type: string
+    FoundationActivity:
+      type: object
+      required: [id, kind, title, detail, recordedAt]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [decision, evidence, assessment]
+        title:
+          type: string
+        detail:
+          type: string
+        recordedAt:
+          type: string
+          format: date-time

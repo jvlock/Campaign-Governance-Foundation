@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Campaign Governance"
+description = "A segment-led governance workspace for creating, organizing, approving, and reporting on integrated Sales and Marketing campaigns while preserving enduring campaign identity and governed taxonomies."
+version = "1.0.0"
+id = "artifacts/campaign-governance"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25626
+
+[services.development]
+run = "pnpm --filter @workspace/campaign-governance run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/campaign-governance", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/campaign-governance/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25626"
+BASE_PATH = "/"
