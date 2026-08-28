@@ -1,0 +1,1 @@
+- [Pnpm transitive security patches](pnpm-transitive-security-patches.md) — pure transitive updates may need workspace overrides when recursive updates preserve old resolutions.
