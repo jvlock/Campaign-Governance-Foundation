@@ -1,0 +1,151 @@
+This prompt assumes Prompt 1 was completed in the same Replit project. If it was not, stop and complete Prompt 1 first. Verify the repository, architecture document, decision log, database migrations, and passing test evidence before making changes. Do not assume functionality exists without repository and test evidence. Preserve all functioning features.
+
+Build a governed, database-driven taxonomy administration layer. This must allow authorized administrators to add new products, segments, personas, channels, and other values without changing application code.
+
+Create governed entities for:
+
+Strategic programs
+
+Segments
+
+Subsegments
+
+Account size tiers and their measurement rules
+
+Buying-group functions
+
+Personas
+
+Seniority levels
+
+Messaging cohorts
+
+Products
+
+Product families
+
+Capabilities and solutions
+
+Customer needs and use cases
+
+Campaign types
+
+Business objectives
+
+Commercial motions
+
+Marketing objectives
+
+Primary conversions
+
+Journey stages
+
+Regions, subregions, countries, and market clusters
+
+Languages
+
+Channels
+
+Sources
+
+Media or delivery mechanisms
+
+Platforms
+
+Activity types
+
+Creative formats
+
+Calls to action
+
+Campaign-member status templates
+
+Fiscal calendars, fiscal years, quarters, and periods
+
+Currencies and cost centers
+
+Every governed value must include:
+
+Stable, immutable key
+
+Display name
+
+Plain-language definition
+
+Status: draft, active, inactive, superseded
+
+Effective start and end dates
+
+Taxonomy version
+
+Source
+
+Owner
+
+Created and updated timestamps
+
+Replacement or superseding value when applicable
+
+Optional legacy codes
+
+Rules:
+
+Stable keys never change, even if display names change.
+
+Referenced values cannot be deleted.
+
+Inactive values remain available for historical reporting but cannot be selected for new campaigns.
+
+Administrators can propose, review, approve, activate, retire, and supersede values.
+
+Additions and changes must be recorded in the audit history.
+
+Support parent-child structures where applicable, such as Segment to Subsegment and Product Family to Product.
+
+Support many-to-many mappings, such as Persona to Segment and Product to Customer Need.
+
+Do not use Other as an unrestricted escape route. An unresolved value must create a review request.
+
+Seed the model from the external HTML prototype and workbooks, but do not overwrite conflicts silently. Create an import-conflict report.
+
+Correct known conflicts such as na meaning both North America and not applicable. Use unambiguous stable keys.
+
+Build a Taxonomy Administration interface with:
+
+Search and filters
+
+List and detail views
+
+Create and edit flows
+
+Parent and association management
+
+Activation, retirement, and supersession controls
+
+Version history
+
+Import preview
+
+Conflict resolution
+
+Usage counts showing how many campaigns reference each value
+
+Permission-controlled actions
+
+Acceptance criteria:
+
+A new segment, product, persona, channel, and fiscal period can be added through administration without a code change.
+
+An active value can be renamed without changing its stable key.
+
+A referenced value cannot be deleted.
+
+A value can be superseded while historical references remain intact.
+
+Dependent selections work, such as Segment to Subsegment.
+
+External reference-data imports produce an auditable preview and conflict report.
+
+Taxonomy unit, database, API, permission, and interface tests pass.
+
+At completion, provide changed files, migrations, seed results, conflict counts, screenshots, test results, and known gaps. Stop after this phase.
