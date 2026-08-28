@@ -1,0 +1,54 @@
+This prompt assumes Prompts 1 through 6 were completed in the same Replit project. If they were not, stop and complete them first. Verify the guided workflow, Campaign Registry, taxonomy, budgeting, external HTML reference rules, decisions, and passing test evidence before changing code. Do not assume functionality exists without repository and test evidence.
+Build configurable channel activities and executions. Preserve useful legacy rules but do not preserve incompatible positional UTM structures.
+Initial supported channels:
+• Email
+• Paid search
+• Paid social
+• Display and content partnerships
+• Organic social
+• Employee advocacy
+• Events
+• Sales cadences
+• In-app
+• MCP
+• Website
+• Partner marketing
+For every activity, capture:
+• Activity Key
+• Parent campaign or wave
+• Activity type
+• Owner
+• Channel
+• Source
+• Delivery platform
+• Start and end dates
+• Financial planning periods
+• Audience treatment
+• Associated products
+• Region and language
+• Primary CTA
+• Landing destination
+• Asset associations
+• Budget allocation
+• Status
+• External platform identifiers
+Build a rules-driven configuration model so administrators can determine which questions, validations, naming templates, and campaign-member statuses apply to each activity type. Adding a future channel must not require rewriting the entire workflow.
+Channel-specific requirements:
+• Email: activation, nurture, newsletter, campaign, event invitation, post-event, and single CTA must remain distinguishable.
+• Sales: prospecting, handraiser recovery, event follow-up, account expansion, cross-sell, renewal support, and executive outreach must be supported.
+• Events: event series, individual event, registration source, attendance, no-show, handraiser, and follow-up must be distinguishable.
+• Paid media: campaign, audience/ad group, creative, placement, platform ID, objective, and landing page must be distinct records or fields.
+• MCP: use controlled intent categories only. Never place raw prompt text in URLs or analytics parameters.
+Execution requirements:
+• One activity can have many executions.
+• Each execution receives a stable Execution Key.
+• Preserve version and lineage when creative or copy changes.
+• An execution can reuse an asset without duplicating the asset.
+• Copying an execution creates a new key and retains the source relationship.
+Acceptance criteria:
+• Each initial channel has a usable conditional workflow.
+• Administrators can add a draft channel configuration without changing interface code.
+• Activities inherit appropriate campaign values and can override only permitted fields.
+• Activity dates and budgets reconcile to fiscal periods.
+• Channel and execution tests pass.
+At completion, provide screenshots for representative channels, changed files, configuration examples, tests, and known gaps. Stop after this phase.
