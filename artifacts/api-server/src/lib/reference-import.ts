@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import XLSX from "xlsx";
+import { strFromU8, unzipSync } from "fflate";
 
 export type ImportSource = "segments_workbook" | "taxonomy_workbook" | "utm_html";
 
@@ -66,11 +66,81 @@ function add(
   });
 }
 
+function decodeXml(value: string) {
+  return value
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(Number.parseInt(code, 16)));
+}
+
+function columnIndex(reference: string) {
+  return [...reference].reduce((result, letter) => result * 26 + letter.charCodeAt(0) - 64, 0);
+}
+
+function textNodes(xml: string) {
+  return [...xml.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)]
+    .map((match) => decodeXml(match[1] ?? ""))
+    .join("");
+}
+
 function workbookRows(filePath: string, sheetName: string) {
-  const workbook = XLSX.readFile(filePath, { cellFormula: false, cellHTML: false });
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) throw new Error(`Expected sheet is missing: ${sheetName}`);
-  return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: false });
+  const files = unzipSync(fs.readFileSync(filePath));
+  const readXml = (fileName: string) => {
+    const content = files[fileName];
+    if (!content) throw new Error(`Workbook part is missing: ${fileName}`);
+    return strFromU8(content);
+  };
+  const workbookXml = readXml("xl/workbook.xml");
+  const relationshipsXml = readXml("xl/_rels/workbook.xml.rels");
+  const escapedName = sheetName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const sheetMatch = workbookXml.match(new RegExp(`<sheet\\b[^>]*name="${escapedName}"[^>]*(?:r:id|id)="([^"]+)"[^>]*/?>`));
+  if (!sheetMatch) throw new Error(`Expected sheet is missing: ${sheetName}`);
+  const relationshipId = sheetMatch[1];
+  const relationship = [...relationshipsXml.matchAll(/<Relationship\b([^>]*)\/?>/g)]
+    .map((match) => match[1] ?? "")
+    .find((attributes) => new RegExp(`\\bId="${relationshipId}"`).test(attributes));
+  const target = relationship?.match(/\bTarget="([^"]+)"/)?.[1];
+  if (!target) throw new Error(`Worksheet relationship is missing: ${sheetName}`);
+  const sheetPath = target.startsWith("/")
+    ? target.slice(1)
+    : path.posix.normalize(path.posix.join("xl", target));
+  const sheetXml = readXml(sheetPath);
+  const sharedStrings = files["xl/sharedStrings.xml"]
+    ? [...readXml("xl/sharedStrings.xml").matchAll(/<si>([\s\S]*?)<\/si>/g)].map((match) => textNodes(match[1] ?? ""))
+    : [];
+  const dimension = sheetXml.match(/<dimension\b[^>]*ref="(?:([A-Z]+)\d+:)?([A-Z]+)\d+"/);
+  const firstColumn = columnIndex(dimension?.[1] ?? dimension?.[2] ?? "A");
+  const rows = new Map<number, Map<number, unknown>>();
+  for (const cellMatch of sheetXml.matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
+    const attributes = cellMatch[1] ?? "";
+    const body = cellMatch[2] ?? "";
+    const reference = attributes.match(/\br="([A-Z]+)(\d+)"/);
+    if (!reference) continue;
+    const column = columnIndex(reference[1]);
+    const row = Number(reference[2]);
+    const type = attributes.match(/\bt="([^"]+)"/)?.[1];
+    const rawValue = body.match(/<v>([\s\S]*?)<\/v>/)?.[1];
+    let value: unknown = null;
+    if (type === "s" && rawValue != null) value = sharedStrings[Number(rawValue)] ?? "";
+    else if (type === "inlineStr") value = textNodes(body);
+    else if (rawValue != null) value = decodeXml(rawValue);
+    const rowValues = rows.get(row) ?? new Map<number, unknown>();
+    rowValues.set(column, value);
+    rows.set(row, rowValues);
+  }
+  if (!rows.size) return [];
+  const firstRow = Math.min(...rows.keys());
+  const lastRow = Math.max(...rows.keys());
+  const lastColumn = Math.max(...[...rows.values()].flatMap((row) => [...row.keys()]));
+  return Array.from({ length: lastRow - firstRow + 1 }, (_, rowOffset) =>
+    Array.from({ length: lastColumn - firstColumn + 1 }, (_, columnOffset) =>
+      rows.get(firstRow + rowOffset)?.get(firstColumn + columnOffset) ?? null,
+    ),
+  );
 }
 
 function stageSegments(): StagedCandidate[] {

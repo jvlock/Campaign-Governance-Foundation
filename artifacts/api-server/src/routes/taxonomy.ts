@@ -505,7 +505,7 @@ router.post("/taxonomy/imports/preview", async (req, res): Promise<void> => {
   }
   let candidates;
   try {
-    candidates = stageReferenceSource(parsed.data.sourceFile);
+    candidates = await stageReferenceSource(parsed.data.sourceFile);
   } catch (error) {
     req.log.error({ err: error }, "Unable to parse preserved taxonomy source");
     res.status(500).json({ error: "Preserved source could not be parsed" });
