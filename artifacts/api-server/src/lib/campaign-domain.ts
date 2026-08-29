@@ -193,3 +193,105 @@ export function containsRawPrompt(value: unknown): boolean {
       || containsRawPrompt(nested);
   });
 }
+
+const PRIVATE_HOST = /^(?:localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|\[?::1\]?)$/i;
+
+export function validateDeliveryEndpoint(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return "Delivery endpoint must use HTTPS";
+    if (url.username || url.password) return "Delivery endpoint cannot contain credentials";
+    if (url.search || url.hash) return "Delivery endpoint cannot contain query parameters or fragments";
+    if (PRIVATE_HOST.test(url.hostname) || url.hostname.endsWith(".local")) return "Delivery endpoint must be a public host";
+    return undefined;
+  } catch {
+    return "Delivery endpoint must be a valid absolute URL";
+  }
+}
+
+export function buildExecutionDeliveryPayload(input: {
+  execution: {
+    executionKey: string;
+    name: string;
+    versionNumber: number;
+    creativeLineage: unknown;
+    copyLineage: unknown;
+    assetIds: string[];
+    configurationData: unknown;
+  };
+  activity: {
+    id: string;
+    campaignKey: string;
+    name: string;
+    platform: string | null;
+    source: string | null;
+    audienceTreatment: string | null;
+    region: string | null;
+    language: string | null;
+    primaryCta: string | null;
+    landingDestination: string | null;
+    deliveryStartDate: string;
+    deliveryEndDate: string;
+    configurationAnswers: unknown;
+  };
+  protectedMcp: boolean;
+}) {
+  const configuration: Record<string, unknown> = input.protectedMcp
+    ? {
+        intentCategory: (input.execution.configurationData as Record<string, unknown> | null)?.intentCategory
+          ?? (input.activity.configurationAnswers as Record<string, unknown> | null)?.intentCategory,
+      }
+    : (input.execution.configurationData as Record<string, unknown>);
+  const payload = input.protectedMcp
+    ? {
+        intent: configuration.intentCategory,
+        execution: { key: input.execution.executionKey, version: input.execution.versionNumber },
+        activity: {
+          key: input.activity.id,
+          campaignKey: input.activity.campaignKey,
+          deliveryStartDate: input.activity.deliveryStartDate,
+          deliveryEndDate: input.activity.deliveryEndDate,
+        },
+      }
+    : {
+        intent: "campaign_execution",
+        execution: {
+          key: input.execution.executionKey,
+          name: input.execution.name,
+          version: input.execution.versionNumber,
+          creativeLineage: input.execution.creativeLineage,
+          copyLineage: input.execution.copyLineage,
+          assetIds: input.execution.assetIds,
+          configuration,
+        },
+        activity: {
+          key: input.activity.id,
+          campaignKey: input.activity.campaignKey,
+          name: input.activity.name,
+          platform: input.activity.platform,
+          source: input.activity.source,
+          audienceTreatment: input.activity.audienceTreatment,
+          region: input.activity.region,
+          language: input.activity.language,
+          primaryCta: input.activity.primaryCta,
+          landingDestination: input.activity.landingDestination,
+          deliveryStartDate: input.activity.deliveryStartDate,
+          deliveryEndDate: input.activity.deliveryEndDate,
+        },
+      };
+  if (input.protectedMcp && (!MCP_DELIVERY_INTENTS.has(payload.intent as string) || containsRawPrompt(payload))) {
+    throw new Error("MCP delivery payload requires a controlled intent category and cannot contain raw prompt text");
+  }
+  return payload;
+}
+
+const MCP_DELIVERY_INTENTS = new Set(["awareness", "consideration", "evaluation", "conversion", "retention"]);
+
+export function readExternalId(value: unknown, path: string): string | undefined {
+  let cursor = value;
+  for (const part of path.split(".")) {
+    if (!cursor || typeof cursor !== "object") return undefined;
+    cursor = (cursor as Record<string, unknown>)[part];
+  }
+  return typeof cursor === "string" || typeof cursor === "number" ? String(cursor) : undefined;
+}

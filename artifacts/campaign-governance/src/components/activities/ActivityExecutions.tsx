@@ -6,6 +6,12 @@ import {
   useCopyActivityExecution,
   useVersionActivityExecution,
   useUpdateActivityExecution,
+  useListDeliveryPlatformConnections,
+  getListDeliveryPlatformConnectionsQueryKey,
+  usePreviewActivityExecutionPublish,
+  usePublishActivityExecution,
+  useListExecutionPublishAttempts,
+  getListExecutionPublishAttemptsQueryKey,
   type ActivityExecution
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +19,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CreateExecutionDialog } from "./CreateExecutionDialog";
-import { Loader2, Copy, GitBranch, FileImage, Edit3 } from "lucide-react";
+import { Loader2, Copy, GitBranch, FileImage, Edit3, Send, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function ActivityExecutions({ activityId }: { activityId: string }) {
@@ -42,7 +50,7 @@ export function ActivityExecutions({ activityId }: { activityId: string }) {
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Version</th>
               <th className="px-4 py-3">Lineage</th>
-              <th className="px-4 py-3">Assets</th>
+              <th className="px-4 py-3">Delivery</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -110,14 +118,11 @@ function ExecutionRow({ execution, activityId }: { execution: ActivityExecution,
           <span className="text-muted-foreground italic">Original</span>
         )}
       </td>
-      <td className="px-4 py-3 text-xs">
-        {execution.assetIds && execution.assetIds.length > 0 ? (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <FileImage className="w-3.5 h-3.5" /> {execution.assetIds.length} assets
-          </span>
-        ) : (
-          <span className="text-muted-foreground opacity-50">-</span>
-        )}
+      <td className="px-4 py-3 text-xs space-y-1">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <FileImage className="w-3.5 h-3.5" /> {execution.assetIds?.length ?? 0} assets
+        </div>
+        <SyncStatus execution={execution} />
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -127,10 +132,147 @@ function ExecutionRow({ execution, activityId }: { execution: ActivityExecution,
           <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={handleVersion} disabled={versionMutation.isPending}>
             <GitBranch className="w-3.5 h-3.5 mr-1" /> Branch
           </Button>
+          <PublishExecutionDialog execution={execution} activityId={activityId} />
           <EditExecutionDialog execution={execution} activityId={activityId} />
         </div>
       </td>
     </tr>
+  );
+}
+
+function SyncStatus({ execution }: { execution: ActivityExecution }) {
+  if (execution.syncState === "published") {
+    return <span className="flex items-center gap-1 text-emerald-700"><CheckCircle2 className="w-3.5 h-3.5" /> Published</span>;
+  }
+  if (execution.syncState === "failed") {
+    return <span className="flex items-center gap-1 text-destructive"><AlertTriangle className="w-3.5 h-3.5" /> Failed</span>;
+  }
+  if (execution.syncState === "publishing") {
+    return <span className="flex items-center gap-1 text-blue-700"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Publishing</span>;
+  }
+  return <span className="text-muted-foreground opacity-60">Not published</span>;
+}
+
+function PublishExecutionDialog({ execution, activityId }: { execution: ActivityExecution, activityId: string }) {
+  const [open, setOpen] = useState(false);
+  const [platformConnectionId, setPlatformConnectionId] = useState("");
+  const [previewPayload, setPreviewPayload] = useState<Record<string, unknown> | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: connections, isLoading } = useListDeliveryPlatformConnections(
+    { activityId },
+    { query: { enabled: open, queryKey: getListDeliveryPlatformConnectionsQueryKey({ activityId }) } },
+  );
+  const { data: attempts } = useListExecutionPublishAttempts(execution.executionKey, {
+    query: { enabled: open, queryKey: getListExecutionPublishAttemptsQueryKey(execution.executionKey) },
+  });
+  const previewMutation = usePreviewActivityExecutionPublish();
+  const publishMutation = usePublishActivityExecution();
+  const activeConnections = connections?.filter((connection) => connection.isActive) ?? [];
+  const isApproved = execution.status?.toLowerCase() === "approved";
+
+  const preview = async () => {
+    try {
+      const result = await previewMutation.mutateAsync({
+        executionKey: execution.executionKey,
+        data: { platformConnectionId },
+      });
+      setPreviewPayload(result.payload);
+      await queryClient.invalidateQueries({
+        queryKey: getListExecutionPublishAttemptsQueryKey(execution.executionKey),
+      });
+      toast({ title: "Preview validated", description: "Nothing was sent to the delivery platform." });
+    } catch (error: any) {
+      toast({ title: "Preview failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const publish = async () => {
+    try {
+      const result = await publishMutation.mutateAsync({
+        executionKey: execution.executionKey,
+        data: { platformConnectionId },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListActivityExecutionsQueryKey(activityId) });
+      toast({
+        title: result.mode === "idempotent" ? "Already published" : "Execution published",
+        description: result.externalId ? `External ID: ${result.externalId}` : undefined,
+      });
+      setOpen(false);
+    } catch (error: any) {
+      await queryClient.invalidateQueries({ queryKey: getListActivityExecutionsQueryKey(activityId) });
+      toast({ title: "Publish failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setPreviewPayload(null); }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-7 text-xs px-2">
+          <Send className="w-3.5 h-3.5 mr-1" /> Publish
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Publish execution</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {!isApproved && (
+            <Alert variant="destructive">
+              <AlertTriangle className="w-4 h-4" />
+              <AlertTitle>Approval required</AlertTitle>
+              <AlertDescription>Only executions with Approved status can be previewed or published.</AlertDescription>
+            </Alert>
+          )}
+          {execution.lastSyncError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="w-4 h-4" />
+              <AlertTitle>Last publish failed</AlertTitle>
+              <AlertDescription>{execution.lastSyncError}</AlertDescription>
+            </Alert>
+          )}
+          <div className="space-y-2">
+            <Label>Delivery platform</Label>
+            <Select value={platformConnectionId} onValueChange={(value) => { setPlatformConnectionId(value); setPreviewPayload(null); }}>
+              <SelectTrigger>
+                <SelectValue placeholder={isLoading ? "Loading platforms..." : "Select an active platform"} />
+              </SelectTrigger>
+              <SelectContent>
+                {activeConnections.map((connection) => (
+                  <SelectItem key={connection.id} value={connection.id}>{connection.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!isLoading && activeConnections.length === 0 && (
+              <p className="text-xs text-muted-foreground">An administrator must activate a delivery platform for this governed channel.</p>
+            )}
+          </div>
+          {previewPayload && (
+            <div className="space-y-2">
+              <Label>Validated payload preview</Label>
+              <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px] whitespace-pre-wrap break-all">
+                {JSON.stringify(previewPayload, null, 2)}
+              </pre>
+            </div>
+          )}
+          {attempts && attempts.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              {attempts.length} audited attempt{attempts.length === 1 ? "" : "s"} · Last: {attempts[0]?.status}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={preview} disabled={!isApproved || !platformConnectionId || previewMutation.isPending}>
+            {previewMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+            Dry run
+          </Button>
+          <Button onClick={publish} disabled={!isApproved || !platformConnectionId || publishMutation.isPending || !previewPayload}>
+            {publishMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Publish to platform
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

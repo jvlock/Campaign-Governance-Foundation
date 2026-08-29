@@ -289,6 +289,35 @@ paths:
       responses:
         "200": { description: Published configuration, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityTypeConfiguration" } } } }
         "409": { description: Configuration is not a draft }
+  /delivery-platform-connections:
+    get:
+      operationId: listDeliveryPlatformConnections
+      tags: [delivery-platforms]
+      parameters:
+        - { name: channelValueId, in: query, schema: { type: string, format: uuid } }
+        - { name: activityId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Configured delivery platforms, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DeliveryPlatformConnection" } } } } }
+    post:
+      operationId: createDeliveryPlatformConnection
+      tags: [delivery-platforms]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DeliveryPlatformConnectionInput" } } } }
+      responses:
+        "201": { description: Delivery platform configured, content: { application/json: { schema: { $ref: "#/components/schemas/DeliveryPlatformConnection" } } } }
+        "400": { description: Invalid connection }
+        "403": { description: Administrator role required }
+        "409": { description: Platform key already configured for channel }
+  /delivery-platform-connections/{connectionId}:
+    patch:
+      operationId: updateDeliveryPlatformConnection
+      tags: [delivery-platforms]
+      parameters:
+        - { name: connectionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DeliveryPlatformConnectionUpdate" } } } }
+      responses:
+        "200": { description: Delivery platform updated, content: { application/json: { schema: { $ref: "#/components/schemas/DeliveryPlatformConnection" } } } }
+        "403": { description: Administrator role required }
+        "404": { description: Connection not found }
   /campaigns/{campaignKey}:
     parameters:
       - { name: campaignKey, in: path, required: true, schema: { type: string, format: uuid } }
@@ -413,6 +442,35 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecutionVersion" } } } }
       responses:
         "201": { description: New version with a new stable key, content: { application/json: { schema: { $ref: "#/components/schemas/ActivityExecution" } } } }
+  /executions/{executionKey}/publish-preview:
+    post:
+      operationId: previewActivityExecutionPublish
+      tags: [executions, delivery-platforms]
+      parameters:
+        - { name: executionKey, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExecutionPublishInput" } } } }
+      responses:
+        "200": { description: Validated payload preview without external delivery, content: { application/json: { schema: { $ref: "#/components/schemas/ExecutionPublishResult" } } } }
+        "409": { description: Execution is not approved or connection is unavailable }
+  /executions/{executionKey}/publish:
+    post:
+      operationId: publishActivityExecution
+      tags: [executions, delivery-platforms]
+      parameters:
+        - { name: executionKey, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ExecutionPublishInput" } } } }
+      responses:
+        "200": { description: Published or idempotently returned, content: { application/json: { schema: { $ref: "#/components/schemas/ExecutionPublishResult" } } } }
+        "409": { description: Execution is not approved or connection is unavailable }
+        "502": { description: Delivery platform rejected or failed the request, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /executions/{executionKey}/publish-attempts:
+    get:
+      operationId: listExecutionPublishAttempts
+      tags: [executions, delivery-platforms]
+      parameters:
+        - { name: executionKey, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Auditable publish history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ExecutionPublishAttempt" } } } } }
   /campaigns/{campaignKey}/costs:
     post:
       operationId: createCampaignCost
@@ -1092,6 +1150,71 @@ components:
             updatedBy: { type: string }
             createdAt: { type: string, format: date-time }
             updatedAt: { type: string, format: date-time }
+            syncState: { type: string, enum: [not_published, publishing, published, failed] }
+            syncPlatformConnectionId: { type: [string, "null"], format: uuid }
+            syncIdempotencyKey: { type: [string, "null"], format: uuid }
+            syncAttemptCount: { type: integer }
+            lastSyncError: { type: [string, "null"] }
+            lastSyncAt: { type: [string, "null"], format: date-time }
+    DeliveryPlatformConnectionInput:
+      type: object
+      required: [channelValueId, platformKey, displayName, endpointUrl]
+      properties:
+        channelValueId: { type: string, format: uuid }
+        platformKey: { type: string, minLength: 2, pattern: "^[a-z0-9][a-z0-9_-]*$" }
+        displayName: { type: string, minLength: 1 }
+        endpointUrl: { type: string, minLength: 8 }
+        externalIdPath: { type: string, minLength: 1, default: id, pattern: "^[A-Za-z0-9_.-]+$" }
+        isActive: { type: boolean, default: false }
+    DeliveryPlatformConnectionUpdate:
+      type: object
+      properties:
+        displayName: { type: string, minLength: 1 }
+        endpointUrl: { type: string, minLength: 8 }
+        externalIdPath: { type: string, minLength: 1, pattern: "^[A-Za-z0-9_.-]+$" }
+        isActive: { type: boolean }
+    DeliveryPlatformConnection:
+      allOf:
+        - { $ref: "#/components/schemas/DeliveryPlatformConnectionInput" }
+        - type: object
+          required: [id, createdBy, updatedBy, createdAt, updatedAt]
+          properties:
+            id: { type: string, format: uuid }
+            createdBy: { type: string }
+            updatedBy: { type: string }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    ExecutionPublishInput:
+      type: object
+      required: [platformConnectionId]
+      properties:
+        platformConnectionId: { type: string, format: uuid }
+    ExecutionPublishResult:
+      type: object
+      required: [mode, idempotencyKey, platformConnection, payload, execution]
+      properties:
+        mode: { type: string, enum: [preview, publish, idempotent] }
+        idempotencyKey: { type: string, format: uuid }
+        platformConnection: { $ref: "#/components/schemas/DeliveryPlatformConnection" }
+        payload: { type: object, additionalProperties: true }
+        execution: { $ref: "#/components/schemas/ActivityExecution" }
+        externalId: { type: [string, "null"] }
+    ExecutionPublishAttempt:
+      type: object
+      required: [id, executionKey, platformConnectionId, idempotencyKey, mode, status, requestPayload, actorId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        executionKey: { type: string, format: uuid }
+        platformConnectionId: { type: string, format: uuid }
+        idempotencyKey: { type: string, format: uuid }
+        mode: { type: string, enum: [preview, publish] }
+        status: { type: string, enum: [previewed, pending, succeeded, failed] }
+        requestPayload: { type: object, additionalProperties: true }
+        responseSummary: { type: [object, "null"], additionalProperties: true }
+        errorMessage: { type: [string, "null"] }
+        actorId: { type: string }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, "null"], format: date-time }
     CampaignCostInput:
       type: object
       required: [description, authoritativeAmountMinor, currency]

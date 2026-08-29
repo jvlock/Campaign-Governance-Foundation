@@ -4,6 +4,8 @@ import {
   CopyActivityExecutionBody,
   CopyActivityExecutionParams,
   CopyActivityExecutionResponse,
+  CreateDeliveryPlatformConnectionBody,
+  CreateDeliveryPlatformConnectionResponse,
   CreateActivityExecutionBody,
   CreateActivityExecutionParams,
   CreateActivityExecutionResponse,
@@ -11,14 +13,27 @@ import {
   CreateActivityTypeConfigurationResponse,
   ListActivityExecutionsParams,
   ListActivityExecutionsResponse,
+  ListDeliveryPlatformConnectionsQueryParams,
+  ListDeliveryPlatformConnectionsResponse,
+  ListExecutionPublishAttemptsParams,
+  ListExecutionPublishAttemptsResponse,
   ListActivityTypeConfigurationsQueryParams,
   ListActivityTypeConfigurationsResponse,
   PublishActivityTypeConfigurationBody,
   PublishActivityTypeConfigurationParams,
   PublishActivityTypeConfigurationResponse,
+  PreviewActivityExecutionPublishBody,
+  PreviewActivityExecutionPublishParams,
+  PreviewActivityExecutionPublishResponse,
+  PublishActivityExecutionBody,
+  PublishActivityExecutionParams,
+  PublishActivityExecutionResponse,
   UpdateActivityExecutionBody,
   UpdateActivityExecutionParams,
   UpdateActivityExecutionResponse,
+  UpdateDeliveryPlatformConnectionBody,
+  UpdateDeliveryPlatformConnectionParams,
+  UpdateDeliveryPlatformConnectionResponse,
   VersionActivityExecutionBody,
   VersionActivityExecutionParams,
   VersionActivityExecutionResponse,
@@ -27,11 +42,19 @@ import {
   activityExecutionsTable,
   activityTypeConfigurationsTable,
   campaignActivitiesTable,
+  deliveryPlatformConnectionsTable,
   db,
+  executionPublishAttemptsTable,
   governedValuesTable,
 } from "@workspace/db";
 import { getAuditActor, requireConfigurationAdministrator, requireMutationAuth } from "../middlewares/mutation-auth";
-import { containsRawPrompt } from "../lib/campaign-domain";
+import {
+  buildExecutionDeliveryPayload,
+  containsRawPrompt,
+  readExternalId,
+  validateDeliveryEndpoint,
+} from "../lib/campaign-domain";
+import { postDeliveryPayload } from "../lib/delivery-platform-client";
 
 const router: IRouter = Router();
 router.use(requireMutationAuth);
@@ -87,10 +110,92 @@ function executionResponse(row: typeof activityExecutionsTable.$inferSelect) {
     copyLineage: row.copyLineage as Record<string, unknown>,
     externalIds: row.externalIds as Record<string, unknown>,
     configurationData: row.configurationData as Record<string, unknown>,
+    lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
 }
+
+function platformConnectionResponse(row: typeof deliveryPlatformConnectionsTable.$inferSelect) {
+  return {
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function publishAttemptResponse(row: typeof executionPublishAttemptsTable.$inferSelect) {
+  return {
+    ...row,
+    requestPayload: row.requestPayload as Record<string, unknown>,
+    responseSummary: row.responseSummary as Record<string, unknown> | null,
+    createdAt: row.createdAt.toISOString(),
+    completedAt: row.completedAt?.toISOString() ?? null,
+  };
+}
+
+router.get("/delivery-platform-connections", async (req, res): Promise<void> => {
+  if (!await requireConfigurationAdministrator(req, res)) return;
+  const parsed = ListDeliveryPlatformConnectionsQueryParams.safeParse(req.query);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  let channelValueId = parsed.data.channelValueId;
+  if (parsed.data.activityId) {
+    const [activity] = await db.select().from(campaignActivitiesTable)
+      .where(eq(campaignActivitiesTable.id, parsed.data.activityId));
+    if (!activity) { res.status(404).json({ error: "Activity not found" }); return; }
+    channelValueId = activity.channelValueId ?? undefined;
+    if (!channelValueId) { res.json(ListDeliveryPlatformConnectionsResponse.parse([])); return; }
+  }
+  const rows = channelValueId
+    ? await db.select().from(deliveryPlatformConnectionsTable)
+      .where(eq(deliveryPlatformConnectionsTable.channelValueId, channelValueId))
+      .orderBy(deliveryPlatformConnectionsTable.displayName)
+    : await db.select().from(deliveryPlatformConnectionsTable)
+      .orderBy(deliveryPlatformConnectionsTable.displayName);
+  res.json(ListDeliveryPlatformConnectionsResponse.parse(rows.map(platformConnectionResponse)));
+});
+
+router.post("/delivery-platform-connections", async (req, res): Promise<void> => {
+  if (!await requireConfigurationAdministrator(req, res)) return;
+  const body = CreateDeliveryPlatformConnectionBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const endpointError = validateDeliveryEndpoint(body.data.endpointUrl);
+  if (endpointError) { res.status(400).json({ error: endpointError }); return; }
+  const [channel] = await db.select().from(governedValuesTable)
+    .where(eq(governedValuesTable.id, body.data.channelValueId));
+  if (!channel || channel.category !== "channel") {
+    res.status(400).json({ error: "Connection channel must reference a governed channel" }); return;
+  }
+  const actorId = getAuditActor(req);
+  try {
+    const [created] = await db.insert(deliveryPlatformConnectionsTable).values({
+      ...body.data,
+      externalIdPath: body.data.externalIdPath ?? "id",
+      isActive: body.data.isActive ?? false,
+      createdBy: actorId,
+      updatedBy: actorId,
+    }).returning();
+    res.status(201).json(CreateDeliveryPlatformConnectionResponse.parse(platformConnectionResponse(created!)));
+  } catch {
+    res.status(409).json({ error: "That platform key is already configured for this channel" });
+  }
+});
+
+router.patch("/delivery-platform-connections/:connectionId", async (req, res): Promise<void> => {
+  if (!await requireConfigurationAdministrator(req, res)) return;
+  const params = UpdateDeliveryPlatformConnectionParams.safeParse(req.params);
+  const body = UpdateDeliveryPlatformConnectionBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "Invalid connection update" }); return; }
+  if (body.data.endpointUrl) {
+    const endpointError = validateDeliveryEndpoint(body.data.endpointUrl);
+    if (endpointError) { res.status(400).json({ error: endpointError }); return; }
+  }
+  const [updated] = await db.update(deliveryPlatformConnectionsTable).set({
+    ...body.data, updatedBy: getAuditActor(req), updatedAt: new Date(),
+  }).where(eq(deliveryPlatformConnectionsTable.id, params.data.connectionId)).returning();
+  if (!updated) { res.status(404).json({ error: "Connection not found" }); return; }
+  res.json(UpdateDeliveryPlatformConnectionResponse.parse(platformConnectionResponse(updated)));
+});
 
 router.get("/activity-type-configurations", async (req, res): Promise<void> => {
   const parsed = ListActivityTypeConfigurationsQueryParams.safeParse(req.query);
@@ -177,6 +282,9 @@ router.post("/activities/:activityId/executions", async (req, res): Promise<void
   const params = CreateActivityExecutionParams.safeParse(req.params);
   const body = CreateActivityExecutionBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid execution" }); return; }
+  if (body.data.status && body.data.status.toLowerCase() !== "draft") {
+    res.status(400).json({ error: "Executions must be created as drafts before approval" }); return;
+  }
   const [activity] = await db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, params.data.activityId));
   if (!activity) { res.status(404).json({ error: "Activity not found" }); return; }
   const [configuration] = activity.configurationId ? await db.select().from(activityTypeConfigurationsTable).where(eq(activityTypeConfigurationsTable.id, activity.configurationId)) : [];
@@ -184,7 +292,7 @@ router.post("/activities/:activityId/executions", async (req, res): Promise<void
     res.status(400).json({ error: "MCP executions cannot contain raw prompt text" }); return;
   }
   const [created] = await db.insert(activityExecutionsTable).values({
-    ...body.data, activityId: activity.id, createdBy: actorId, updatedBy: actorId,
+    ...body.data, status: "draft", activityId: activity.id, createdBy: actorId, updatedBy: actorId,
   }).returning();
   res.status(201).json(CreateActivityExecutionResponse.parse(executionResponse(created!)));
 });
@@ -200,13 +308,32 @@ router.patch("/executions/:executionKey", async (req, res): Promise<void> => {
     campaignActivitiesTable, eq(campaignActivitiesTable.id, activityExecutionsTable.activityId),
   ).where(eq(activityExecutionsTable.executionKey, params.data.executionKey));
   if (!current) { res.status(404).json({ error: "Execution not found" }); return; }
+  if (current.execution.syncState === "publishing") {
+    res.status(409).json({ error: "Execution cannot be changed while publication is in progress" }); return;
+  }
+  if (body.data.status?.toLowerCase() === "approved"
+    && current.execution.status.toLowerCase() !== "approved"
+    && !await requireConfigurationAdministrator(req, res)) return;
+  if (current.execution.status.toLowerCase() === "approved"
+    && !await requireConfigurationAdministrator(req, res)) return;
   const [configuration] = current.activity.configurationId ? await db.select().from(activityTypeConfigurationsTable).where(eq(activityTypeConfigurationsTable.id, current.activity.configurationId)) : [];
   if (await isProtectedMcpConfiguration(configuration, current.activity.activityType) && containsRawPrompt(body.data)) {
     res.status(400).json({ error: "MCP executions cannot contain raw prompt text" }); return;
   }
   const { rowVersion, ...values } = body.data;
+  const materialChanged = values.name !== current.execution.name
+    || JSON.stringify(values.creativeLineage ?? {}) !== JSON.stringify(current.execution.creativeLineage)
+    || JSON.stringify(values.copyLineage ?? {}) !== JSON.stringify(current.execution.copyLineage)
+    || JSON.stringify(values.assetIds ?? []) !== JSON.stringify(current.execution.assetIds)
+    || JSON.stringify(values.configurationData ?? {}) !== JSON.stringify(current.execution.configurationData);
+  if (current.execution.syncState === "published" && materialChanged) {
+    res.status(409).json({ error: "Published execution content is immutable; create a new version before changing delivery content" });
+    return;
+  }
   const [updated] = await db.update(activityExecutionsTable).set({
-    ...values, rowVersion: rowVersion + 1, updatedBy: actorId, updatedAt: new Date(),
+    ...values,
+    status: current.execution.status.toLowerCase() === "approved" && materialChanged ? "draft" : values.status,
+    rowVersion: rowVersion + 1, updatedBy: actorId, updatedAt: new Date(),
   }).where(and(
     eq(activityExecutionsTable.executionKey, params.data.executionKey),
     eq(activityExecutionsTable.rowVersion, rowVersion),
@@ -243,7 +370,7 @@ router.post("/executions/:executionKey/copy", async (req, res): Promise<void> =>
   const [created] = await db.insert(activityExecutionsTable).values({
     activityId: targetActivityId, name: body.data.name ?? source.name, status: "draft", versionNumber: 1,
     copiedFromExecutionKey: source.executionKey, creativeLineage: source.creativeLineage,
-    copyLineage: source.copyLineage, assetIds: source.assetIds, externalIds: source.externalIds,
+    copyLineage: source.copyLineage, assetIds: source.assetIds, externalIds: {},
     configurationData: source.configurationData, createdBy: actorId, updatedBy: actorId,
   }).returning();
   res.status(201).json(CopyActivityExecutionResponse.parse(executionResponse(created!)));
@@ -273,11 +400,236 @@ router.post("/executions/:executionKey/versions", async (req, res): Promise<void
     activityId: source.activityId, name: body.data.name ?? source.name, status: "draft",
     versionNumber: source.versionNumber + 1, previousVersionExecutionKey: source.executionKey,
     creativeLineage: source.creativeLineage, copyLineage: source.copyLineage, assetIds: source.assetIds,
-    externalIds: source.externalIds, configurationData: source.configurationData,
+    externalIds: {}, configurationData: source.configurationData,
     createdBy: actorId, updatedBy: actorId,
   }).returning();
   res.status(201).json(VersionActivityExecutionResponse.parse(executionResponse(created!)));
 });
 
-export { configurationResponse, executionResponse };
+async function loadPublishContext(executionKey: string, platformConnectionId: string) {
+  const [context] = await db.select({
+    execution: activityExecutionsTable,
+    activity: campaignActivitiesTable,
+  }).from(activityExecutionsTable).innerJoin(
+    campaignActivitiesTable, eq(campaignActivitiesTable.id, activityExecutionsTable.activityId),
+  ).where(eq(activityExecutionsTable.executionKey, executionKey));
+  if (!context) return { error: "Execution not found" as const, status: 404 as const };
+  if (context.execution.status.toLowerCase() !== "approved") {
+    return { error: "Only approved executions can be published" as const, status: 409 as const };
+  }
+  const stalePublishing = context.execution.syncState === "publishing"
+    && !!context.execution.lastSyncAt
+    && context.execution.lastSyncAt.getTime() < Date.now() - 120_000;
+  if (context.execution.syncState === "publishing" && !stalePublishing) {
+    return { error: "This execution already has a publish request in progress" as const, status: 409 as const };
+  }
+  const [connection] = await db.select().from(deliveryPlatformConnectionsTable)
+    .where(eq(deliveryPlatformConnectionsTable.id, platformConnectionId));
+  if (!connection || !connection.isActive) {
+    return { error: "Delivery platform connection is unavailable or inactive" as const, status: 409 as const };
+  }
+  if (!context.activity.channelValueId || connection.channelValueId !== context.activity.channelValueId) {
+    return { error: "Delivery platform is not connected to this execution's governed channel" as const, status: 409 as const };
+  }
+  const [configuration] = context.activity.configurationId
+    ? await db.select().from(activityTypeConfigurationsTable)
+      .where(eq(activityTypeConfigurationsTable.id, context.activity.configurationId))
+    : [];
+  const protectedMcp = await isProtectedMcpConfiguration(configuration, context.activity.activityType);
+  try {
+    return {
+      ...context,
+      connection,
+      payload: buildExecutionDeliveryPayload({ ...context, protectedMcp }),
+      idempotencyKey: context.execution.syncIdempotencyKey!,
+    };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Invalid delivery payload", status: 409 as const };
+  }
+}
+
+router.post("/executions/:executionKey/publish-preview", async (req, res): Promise<void> => {
+  if (!await requireConfigurationAdministrator(req, res)) return;
+  const params = PreviewActivityExecutionPublishParams.safeParse(req.params);
+  const body = PreviewActivityExecutionPublishBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "Invalid publish preview" }); return; }
+  const context = await loadPublishContext(params.data.executionKey, body.data.platformConnectionId);
+  if ("error" in context) { res.status(context.status!).json({ error: context.error }); return; }
+  const [attempt] = await db.insert(executionPublishAttemptsTable).values({
+    executionKey: context.execution.executionKey,
+    platformConnectionId: context.connection.id,
+    idempotencyKey: context.idempotencyKey,
+    mode: "preview",
+    status: "previewed",
+    requestPayload: context.payload,
+    responseSummary: { validated: true, delivered: false },
+    actorId: getAuditActor(req),
+    completedAt: new Date(),
+  }).returning();
+  req.log.info({
+    executionKey: context.execution.executionKey,
+    platformConnectionId: context.connection.id,
+    attemptId: attempt!.id,
+  }, "Execution publish preview validated");
+  res.json(PreviewActivityExecutionPublishResponse.parse({
+    mode: "preview",
+    idempotencyKey: context.idempotencyKey,
+    platformConnection: platformConnectionResponse(context.connection),
+    payload: context.payload,
+    execution: executionResponse(context.execution),
+    externalId: null,
+  }));
+});
+
+router.post("/executions/:executionKey/publish", async (req, res): Promise<void> => {
+  if (!await requireConfigurationAdministrator(req, res)) return;
+  const params = PublishActivityExecutionParams.safeParse(req.params);
+  const body = PublishActivityExecutionBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "Invalid publication" }); return; }
+  const context = await loadPublishContext(params.data.executionKey, body.data.platformConnectionId);
+  if ("error" in context) { res.status(context.status!).json({ error: context.error }); return; }
+
+  const existingExternalId = (context.execution.externalIds as Record<string, unknown>)[context.connection.platformKey];
+  if (context.execution.syncState === "published"
+    && context.execution.syncPlatformConnectionId === context.connection.id
+    && (typeof existingExternalId === "string" || typeof existingExternalId === "number")) {
+    res.json(PublishActivityExecutionResponse.parse({
+      mode: "idempotent",
+      idempotencyKey: context.idempotencyKey,
+      platformConnection: platformConnectionResponse(context.connection),
+      payload: context.payload,
+      execution: executionResponse(context.execution),
+      externalId: String(existingExternalId),
+    }));
+    return;
+  }
+
+  const actorId = getAuditActor(req);
+  const claimed = await db.transaction(async (tx) => {
+    if (context.execution.syncState === "publishing") {
+      await tx.update(executionPublishAttemptsTable).set({
+        status: "failed",
+        errorMessage: "Superseded after the prior publisher stopped before completing",
+        completedAt: new Date(),
+      }).where(and(
+        eq(executionPublishAttemptsTable.executionKey, context.execution.executionKey),
+        eq(executionPublishAttemptsTable.status, "pending"),
+      ));
+    }
+    const [execution] = await tx.update(activityExecutionsTable).set({
+      syncState: "publishing",
+      syncPlatformConnectionId: context.connection.id,
+      syncAttemptCount: context.execution.syncAttemptCount + 1,
+      lastSyncError: null,
+      lastSyncAt: new Date(),
+      rowVersion: context.execution.rowVersion + 1,
+      updatedBy: actorId,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(activityExecutionsTable.executionKey, context.execution.executionKey),
+      eq(activityExecutionsTable.rowVersion, context.execution.rowVersion),
+      eq(activityExecutionsTable.syncState, context.execution.syncState),
+    )).returning();
+    if (!execution) return undefined;
+    const [attempt] = await tx.insert(executionPublishAttemptsTable).values({
+      executionKey: context.execution.executionKey,
+      platformConnectionId: context.connection.id,
+      idempotencyKey: context.idempotencyKey,
+      mode: "publish",
+      status: "pending",
+      requestPayload: context.payload,
+      actorId,
+    }).returning();
+    return { execution, attempt: attempt! };
+  });
+  if (!claimed) {
+    res.status(409).json({ error: "Execution publish state changed; refresh before retrying" });
+    return;
+  }
+
+  try {
+    const response = await postDeliveryPayload(context.connection.endpointUrl, context.payload, {
+        "idempotency-key": context.idempotencyKey,
+        "x-campaign-execution-key": context.execution.executionKey,
+    });
+    const externalId = readExternalId(response.body, context.connection.externalIdPath);
+    if (!externalId) throw new Error(`Delivery platform response did not include ${context.connection.externalIdPath}`);
+    const [updated] = await db.update(activityExecutionsTable).set({
+      externalIds: {
+        ...(context.execution.externalIds as Record<string, unknown>),
+        [context.connection.platformKey]: externalId,
+      },
+      syncState: "published",
+      syncPlatformConnectionId: context.connection.id,
+      lastSyncError: null,
+      lastSyncAt: new Date(),
+      rowVersion: claimed.execution.rowVersion + 1,
+      updatedBy: actorId,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(activityExecutionsTable.executionKey, context.execution.executionKey),
+      eq(activityExecutionsTable.rowVersion, claimed.execution.rowVersion),
+      eq(activityExecutionsTable.syncState, "publishing"),
+    )).returning();
+    if (!updated) throw new Error("Execution publish state changed before completion");
+    await db.update(executionPublishAttemptsTable).set({
+      status: "succeeded",
+      responseSummary: { httpStatus: response.status, externalId },
+      completedAt: new Date(),
+    }).where(eq(executionPublishAttemptsTable.id, claimed.attempt.id));
+    req.log.info({
+      executionKey: context.execution.executionKey,
+      platformConnectionId: context.connection.id,
+      attemptId: claimed.attempt.id,
+    }, "Execution published to delivery platform");
+    res.json(PublishActivityExecutionResponse.parse({
+      mode: "publish",
+      idempotencyKey: context.idempotencyKey,
+      platformConnection: platformConnectionResponse(context.connection),
+      payload: context.payload,
+      execution: executionResponse(updated!),
+      externalId,
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Delivery platform request failed";
+    await Promise.all([
+      db.update(activityExecutionsTable).set({
+        syncState: "failed",
+        syncPlatformConnectionId: context.connection.id,
+        lastSyncError: message,
+        lastSyncAt: new Date(),
+        updatedBy: actorId,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(activityExecutionsTable.executionKey, context.execution.executionKey),
+        eq(activityExecutionsTable.rowVersion, claimed.execution.rowVersion),
+        eq(activityExecutionsTable.syncState, "publishing"),
+      )),
+      db.update(executionPublishAttemptsTable).set({
+        status: "failed",
+        errorMessage: message,
+        completedAt: new Date(),
+      }).where(eq(executionPublishAttemptsTable.id, claimed.attempt.id)),
+    ]);
+    req.log.warn({
+      executionKey: context.execution.executionKey,
+      platformConnectionId: context.connection.id,
+      attemptId: claimed.attempt.id,
+      err: error,
+    }, "Execution delivery platform publish failed");
+    res.status(502).json({ error: message });
+  }
+});
+
+router.get("/executions/:executionKey/publish-attempts", async (req, res): Promise<void> => {
+  if (!await requireConfigurationAdministrator(req, res)) return;
+  const params = ListExecutionPublishAttemptsParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid execution key" }); return; }
+  const rows = await db.select().from(executionPublishAttemptsTable)
+    .where(eq(executionPublishAttemptsTable.executionKey, params.data.executionKey))
+    .orderBy(desc(executionPublishAttemptsTable.createdAt));
+  res.json(ListExecutionPublishAttemptsResponse.parse(rows.map(publishAttemptResponse)));
+});
+
+export { configurationResponse, executionResponse, platformConnectionResponse };
 export default router;

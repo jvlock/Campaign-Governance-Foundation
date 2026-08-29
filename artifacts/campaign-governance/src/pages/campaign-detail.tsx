@@ -35,6 +35,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { ManageConfigurationsDialog } from "@/components/activities/ManageConfigurationsDialog";
+import { ManageDeliveryPlatformsDialog } from "@/components/activities/ManageDeliveryPlatformsDialog";
 import { CreateActivityDialog } from "@/components/activities/CreateActivityDialog";
 import { ActivityList } from "@/components/activities/ActivityList";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -531,6 +532,7 @@ export default function CampaignDetail() {
                      <CardDescription>Configure channel activities and executions</CardDescription>
                    </div>
                    <div className="flex gap-2">
+                     <ManageDeliveryPlatformsDialog />
                      <ManageConfigurationsDialog />
                      <CreateActivityDialog campaign={campaign} />
                    </div>

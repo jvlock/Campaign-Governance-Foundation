@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { ActivityExecutionInput } from './activityExecutionInput';
+import type { ActivityExecutionSyncState } from './activityExecutionSyncState';
 
 export type ActivityExecution = ActivityExecutionInput & ({
   executionKey: string;
@@ -20,4 +21,14 @@ export type ActivityExecution = ActivityExecutionInput & ({
   updatedBy: string;
   createdAt: Date;
   updatedAt: Date;
+  syncState?: ActivityExecutionSyncState;
+  /** @nullable */
+  syncPlatformConnectionId?: string | null;
+  /** @nullable */
+  syncIdempotencyKey?: string | null;
+  syncAttemptCount?: number;
+  /** @nullable */
+  lastSyncError?: string | null;
+  /** @nullable */
+  lastSyncAt?: Date | null;
 });

@@ -723,6 +723,140 @@ export const PublishActivityTypeConfigurationResponse = zod.object({
 }))
 
 
+export const ListDeliveryPlatformConnectionsQueryParams = zod.object({
+  "channelValueId": zod.coerce.string().optional(),
+  "activityId": zod.coerce.string().optional()
+})
+
+export const listDeliveryPlatformConnectionsResponseOnePlatformKeyMin = 2;
+
+
+export const listDeliveryPlatformConnectionsResponseOnePlatformKeyRegExp = new RegExp('^[a-z0-9][a-z0-9_-]*$');
+
+export const listDeliveryPlatformConnectionsResponseOneEndpointUrlMin = 8;
+
+export const listDeliveryPlatformConnectionsResponseOneExternalIdPathDefault = `id`;
+
+
+export const listDeliveryPlatformConnectionsResponseOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const listDeliveryPlatformConnectionsResponseOneIsActiveDefault = false;
+
+export const ListDeliveryPlatformConnectionsResponseItem = zod.object({
+  "channelValueId": zod.string(),
+  "platformKey": zod.string().min(listDeliveryPlatformConnectionsResponseOnePlatformKeyMin).regex(listDeliveryPlatformConnectionsResponseOnePlatformKeyRegExp),
+  "displayName": zod.string().min(1),
+  "endpointUrl": zod.string().min(listDeliveryPlatformConnectionsResponseOneEndpointUrlMin),
+  "externalIdPath": zod.string().min(1).regex(listDeliveryPlatformConnectionsResponseOneExternalIdPathRegExp).default(listDeliveryPlatformConnectionsResponseOneExternalIdPathDefault),
+  "isActive": zod.boolean().default(listDeliveryPlatformConnectionsResponseOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.string(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListDeliveryPlatformConnectionsResponse = zod.array(ListDeliveryPlatformConnectionsResponseItem)
+
+
+export const createDeliveryPlatformConnectionBodyPlatformKeyMin = 2;
+
+
+export const createDeliveryPlatformConnectionBodyPlatformKeyRegExp = new RegExp('^[a-z0-9][a-z0-9_-]*$');
+
+export const createDeliveryPlatformConnectionBodyEndpointUrlMin = 8;
+
+export const createDeliveryPlatformConnectionBodyExternalIdPathDefault = `id`;
+
+
+export const createDeliveryPlatformConnectionBodyExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const createDeliveryPlatformConnectionBodyIsActiveDefault = false;
+
+export const CreateDeliveryPlatformConnectionBody = zod.object({
+  "channelValueId": zod.string(),
+  "platformKey": zod.string().min(createDeliveryPlatformConnectionBodyPlatformKeyMin).regex(createDeliveryPlatformConnectionBodyPlatformKeyRegExp),
+  "displayName": zod.string().min(1),
+  "endpointUrl": zod.string().min(createDeliveryPlatformConnectionBodyEndpointUrlMin),
+  "externalIdPath": zod.string().min(1).regex(createDeliveryPlatformConnectionBodyExternalIdPathRegExp).default(createDeliveryPlatformConnectionBodyExternalIdPathDefault),
+  "isActive": zod.boolean().default(createDeliveryPlatformConnectionBodyIsActiveDefault)
+})
+
+export const createDeliveryPlatformConnectionResponseOnePlatformKeyMin = 2;
+
+
+export const createDeliveryPlatformConnectionResponseOnePlatformKeyRegExp = new RegExp('^[a-z0-9][a-z0-9_-]*$');
+
+export const createDeliveryPlatformConnectionResponseOneEndpointUrlMin = 8;
+
+export const createDeliveryPlatformConnectionResponseOneExternalIdPathDefault = `id`;
+
+
+export const createDeliveryPlatformConnectionResponseOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const createDeliveryPlatformConnectionResponseOneIsActiveDefault = false;
+
+export const CreateDeliveryPlatformConnectionResponse = zod.object({
+  "channelValueId": zod.string(),
+  "platformKey": zod.string().min(createDeliveryPlatformConnectionResponseOnePlatformKeyMin).regex(createDeliveryPlatformConnectionResponseOnePlatformKeyRegExp),
+  "displayName": zod.string().min(1),
+  "endpointUrl": zod.string().min(createDeliveryPlatformConnectionResponseOneEndpointUrlMin),
+  "externalIdPath": zod.string().min(1).regex(createDeliveryPlatformConnectionResponseOneExternalIdPathRegExp).default(createDeliveryPlatformConnectionResponseOneExternalIdPathDefault),
+  "isActive": zod.boolean().default(createDeliveryPlatformConnectionResponseOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.string(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const UpdateDeliveryPlatformConnectionParams = zod.object({
+  "connectionId": zod.coerce.string()
+})
+
+
+export const updateDeliveryPlatformConnectionBodyEndpointUrlMin = 8;
+
+
+
+export const updateDeliveryPlatformConnectionBodyExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+
+
+export const UpdateDeliveryPlatformConnectionBody = zod.object({
+  "displayName": zod.string().min(1).optional(),
+  "endpointUrl": zod.string().min(updateDeliveryPlatformConnectionBodyEndpointUrlMin).optional(),
+  "externalIdPath": zod.string().min(1).regex(updateDeliveryPlatformConnectionBodyExternalIdPathRegExp).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const updateDeliveryPlatformConnectionResponseOnePlatformKeyMin = 2;
+
+
+export const updateDeliveryPlatformConnectionResponseOnePlatformKeyRegExp = new RegExp('^[a-z0-9][a-z0-9_-]*$');
+
+export const updateDeliveryPlatformConnectionResponseOneEndpointUrlMin = 8;
+
+export const updateDeliveryPlatformConnectionResponseOneExternalIdPathDefault = `id`;
+
+
+export const updateDeliveryPlatformConnectionResponseOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const updateDeliveryPlatformConnectionResponseOneIsActiveDefault = false;
+
+export const UpdateDeliveryPlatformConnectionResponse = zod.object({
+  "channelValueId": zod.string(),
+  "platformKey": zod.string().min(updateDeliveryPlatformConnectionResponseOnePlatformKeyMin).regex(updateDeliveryPlatformConnectionResponseOnePlatformKeyRegExp),
+  "displayName": zod.string().min(1),
+  "endpointUrl": zod.string().min(updateDeliveryPlatformConnectionResponseOneEndpointUrlMin),
+  "externalIdPath": zod.string().min(1).regex(updateDeliveryPlatformConnectionResponseOneExternalIdPathRegExp).default(updateDeliveryPlatformConnectionResponseOneExternalIdPathDefault),
+  "isActive": zod.boolean().default(updateDeliveryPlatformConnectionResponseOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.string(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
 export const GetCampaignParams = zod.object({
   "campaignKey": zod.coerce.string()
 })
@@ -869,7 +1003,13 @@ export const GetCampaignResponse = zod.object({
   "createdBy": zod.string(),
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
 }))),
   "configuration": zod.union([zod.object({
   "stableKey": zod.string().min(getCampaignResponseTwoActivitiesItemTwoConfigurationOneOneStableKeyMin),
@@ -1345,7 +1485,13 @@ export const ListActivityExecutionsResponseItem = zod.object({
   "createdBy": zod.string(),
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
 }))
 export const ListActivityExecutionsResponse = zod.array(ListActivityExecutionsResponseItem)
 
@@ -1388,7 +1534,13 @@ export const CreateActivityExecutionResponse = zod.object({
   "createdBy": zod.string(),
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
 }))
 
 
@@ -1433,7 +1585,13 @@ export const UpdateActivityExecutionResponse = zod.object({
   "createdBy": zod.string(),
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
 }))
 
 
@@ -1470,7 +1628,13 @@ export const CopyActivityExecutionResponse = zod.object({
   "createdBy": zod.string(),
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
 }))
 
 
@@ -1506,8 +1670,175 @@ export const VersionActivityExecutionResponse = zod.object({
   "createdBy": zod.string(),
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
 }))
+
+
+export const PreviewActivityExecutionPublishParams = zod.object({
+  "executionKey": zod.coerce.string()
+})
+
+export const PreviewActivityExecutionPublishBody = zod.object({
+  "platformConnectionId": zod.string()
+})
+
+export const previewActivityExecutionPublishResponsePlatformConnectionOnePlatformKeyMin = 2;
+
+
+export const previewActivityExecutionPublishResponsePlatformConnectionOnePlatformKeyRegExp = new RegExp('^[a-z0-9][a-z0-9_-]*$');
+
+export const previewActivityExecutionPublishResponsePlatformConnectionOneEndpointUrlMin = 8;
+
+export const previewActivityExecutionPublishResponsePlatformConnectionOneExternalIdPathDefault = `id`;
+
+
+export const previewActivityExecutionPublishResponsePlatformConnectionOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const previewActivityExecutionPublishResponsePlatformConnectionOneIsActiveDefault = false;
+
+
+export const PreviewActivityExecutionPublishResponse = zod.object({
+  "mode": zod.enum(['preview', 'publish', 'idempotent']),
+  "idempotencyKey": zod.string(),
+  "platformConnection": zod.object({
+  "channelValueId": zod.string(),
+  "platformKey": zod.string().min(previewActivityExecutionPublishResponsePlatformConnectionOnePlatformKeyMin).regex(previewActivityExecutionPublishResponsePlatformConnectionOnePlatformKeyRegExp),
+  "displayName": zod.string().min(1),
+  "endpointUrl": zod.string().min(previewActivityExecutionPublishResponsePlatformConnectionOneEndpointUrlMin),
+  "externalIdPath": zod.string().min(1).regex(previewActivityExecutionPublishResponsePlatformConnectionOneExternalIdPathRegExp).default(previewActivityExecutionPublishResponsePlatformConnectionOneExternalIdPathDefault),
+  "isActive": zod.boolean().default(previewActivityExecutionPublishResponsePlatformConnectionOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.string(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "payload": zod.record(zod.string(), zod.unknown()),
+  "execution": zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
+})),
+  "externalId": zod.string().nullish()
+})
+
+
+export const PublishActivityExecutionParams = zod.object({
+  "executionKey": zod.coerce.string()
+})
+
+export const PublishActivityExecutionBody = zod.object({
+  "platformConnectionId": zod.string()
+})
+
+export const publishActivityExecutionResponsePlatformConnectionOnePlatformKeyMin = 2;
+
+
+export const publishActivityExecutionResponsePlatformConnectionOnePlatformKeyRegExp = new RegExp('^[a-z0-9][a-z0-9_-]*$');
+
+export const publishActivityExecutionResponsePlatformConnectionOneEndpointUrlMin = 8;
+
+export const publishActivityExecutionResponsePlatformConnectionOneExternalIdPathDefault = `id`;
+
+
+export const publishActivityExecutionResponsePlatformConnectionOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const publishActivityExecutionResponsePlatformConnectionOneIsActiveDefault = false;
+
+
+export const PublishActivityExecutionResponse = zod.object({
+  "mode": zod.enum(['preview', 'publish', 'idempotent']),
+  "idempotencyKey": zod.string(),
+  "platformConnection": zod.object({
+  "channelValueId": zod.string(),
+  "platformKey": zod.string().min(publishActivityExecutionResponsePlatformConnectionOnePlatformKeyMin).regex(publishActivityExecutionResponsePlatformConnectionOnePlatformKeyRegExp),
+  "displayName": zod.string().min(1),
+  "endpointUrl": zod.string().min(publishActivityExecutionResponsePlatformConnectionOneEndpointUrlMin),
+  "externalIdPath": zod.string().min(1).regex(publishActivityExecutionResponsePlatformConnectionOneExternalIdPathRegExp).default(publishActivityExecutionResponsePlatformConnectionOneExternalIdPathDefault),
+  "isActive": zod.boolean().default(publishActivityExecutionResponsePlatformConnectionOneIsActiveDefault)
+}).and(zod.object({
+  "id": zod.string(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "payload": zod.record(zod.string(), zod.unknown()),
+  "execution": zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional(),
+  "creativeLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "copyLineage": zod.record(zod.string(), zod.unknown()).optional(),
+  "assetIds": zod.array(zod.string()).optional(),
+  "externalIds": zod.record(zod.string(), zod.unknown()).optional(),
+  "configurationData": zod.record(zod.string(), zod.unknown()).optional()
+}).and(zod.object({
+  "executionKey": zod.string(),
+  "activityId": zod.string(),
+  "versionNumber": zod.number(),
+  "copiedFromExecutionKey": zod.string().nullish(),
+  "previousVersionExecutionKey": zod.string().nullish(),
+  "rowVersion": zod.number(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "syncState": zod.enum(['not_published', 'publishing', 'published', 'failed']).optional(),
+  "syncPlatformConnectionId": zod.string().nullish(),
+  "syncIdempotencyKey": zod.string().nullish(),
+  "syncAttemptCount": zod.number().optional(),
+  "lastSyncError": zod.string().nullish(),
+  "lastSyncAt": zod.coerce.date().nullish()
+})),
+  "externalId": zod.string().nullish()
+})
+
+
+export const ListExecutionPublishAttemptsParams = zod.object({
+  "executionKey": zod.coerce.string()
+})
+
+export const ListExecutionPublishAttemptsResponseItem = zod.object({
+  "id": zod.string(),
+  "executionKey": zod.string(),
+  "platformConnectionId": zod.string(),
+  "idempotencyKey": zod.string(),
+  "mode": zod.enum(['preview', 'publish']),
+  "status": zod.enum(['previewed', 'pending', 'succeeded', 'failed']),
+  "requestPayload": zod.record(zod.string(), zod.unknown()),
+  "responseSummary": zod.record(zod.string(), zod.unknown()).nullish(),
+  "errorMessage": zod.string().nullish(),
+  "actorId": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+export const ListExecutionPublishAttemptsResponse = zod.array(ListExecutionPublishAttemptsResponseItem)
 
 
 export const CreateCampaignCostParams = zod.object({

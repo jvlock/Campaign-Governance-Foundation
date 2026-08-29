@@ -776,6 +776,16 @@ export interface ActivityExecutionInput {
   configurationData?: ActivityExecutionInputConfigurationData;
 }
 
+export type ActivityExecutionSyncState = typeof ActivityExecutionSyncState[keyof typeof ActivityExecutionSyncState];
+
+
+export const ActivityExecutionSyncState = {
+  not_published: 'not_published',
+  publishing: 'publishing',
+  published: 'published',
+  failed: 'failed',
+} as const;
+
 export type ActivityExecution = ActivityExecutionInput & ({
   executionKey: string;
   activityId: string;
@@ -789,6 +799,16 @@ export type ActivityExecution = ActivityExecutionInput & ({
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  syncState?: ActivityExecutionSyncState;
+  /** @nullable */
+  syncPlatformConnectionId?: string | null;
+  /** @nullable */
+  syncIdempotencyKey?: string | null;
+  syncAttemptCount?: number;
+  /** @nullable */
+  lastSyncError?: string | null;
+  /** @nullable */
+  lastSyncAt?: string | null;
 });
 
 export type ActivityConfigurationQuestionRequiredWhen = {
@@ -1013,6 +1033,114 @@ export interface ActivityExecutionCopy {
 export interface ActivityExecutionVersion {
   /** @minLength 1 */
   name?: string;
+}
+
+export interface DeliveryPlatformConnectionInput {
+  channelValueId: string;
+  /**
+     * @minLength 2
+     * @pattern ^[a-z0-9][a-z0-9_-]*$
+     */
+  platformKey: string;
+  /** @minLength 1 */
+  displayName: string;
+  /** @minLength 8 */
+  endpointUrl: string;
+  /**
+     * @minLength 1
+     * @pattern ^[A-Za-z0-9_.-]+$
+     */
+  externalIdPath?: string;
+  isActive?: boolean;
+}
+
+export interface DeliveryPlatformConnectionUpdate {
+  /** @minLength 1 */
+  displayName?: string;
+  /** @minLength 8 */
+  endpointUrl?: string;
+  /**
+     * @minLength 1
+     * @pattern ^[A-Za-z0-9_.-]+$
+     */
+  externalIdPath?: string;
+  isActive?: boolean;
+}
+
+export type DeliveryPlatformConnection = DeliveryPlatformConnectionInput & {
+  id: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export interface ExecutionPublishInput {
+  platformConnectionId: string;
+}
+
+export type ExecutionPublishResultMode = typeof ExecutionPublishResultMode[keyof typeof ExecutionPublishResultMode];
+
+
+export const ExecutionPublishResultMode = {
+  preview: 'preview',
+  publish: 'publish',
+  idempotent: 'idempotent',
+} as const;
+
+export type ExecutionPublishResultPayload = { [key: string]: unknown };
+
+export interface ExecutionPublishResult {
+  mode: ExecutionPublishResultMode;
+  idempotencyKey: string;
+  platformConnection: DeliveryPlatformConnection;
+  payload: ExecutionPublishResultPayload;
+  execution: ActivityExecution;
+  /** @nullable */
+  externalId?: string | null;
+}
+
+export type ExecutionPublishAttemptMode = typeof ExecutionPublishAttemptMode[keyof typeof ExecutionPublishAttemptMode];
+
+
+export const ExecutionPublishAttemptMode = {
+  preview: 'preview',
+  publish: 'publish',
+} as const;
+
+export type ExecutionPublishAttemptStatus = typeof ExecutionPublishAttemptStatus[keyof typeof ExecutionPublishAttemptStatus];
+
+
+export const ExecutionPublishAttemptStatus = {
+  previewed: 'previewed',
+  pending: 'pending',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export type ExecutionPublishAttemptRequestPayload = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type ExecutionPublishAttemptResponseSummary = { [key: string]: unknown } | null;
+
+export interface ExecutionPublishAttempt {
+  id: string;
+  executionKey: string;
+  platformConnectionId: string;
+  idempotencyKey: string;
+  mode: ExecutionPublishAttemptMode;
+  status: ExecutionPublishAttemptStatus;
+  requestPayload: ExecutionPublishAttemptRequestPayload;
+  /** @nullable */
+  responseSummary?: ExecutionPublishAttemptResponseSummary;
+  /** @nullable */
+  errorMessage?: string | null;
+  actorId: string;
+  createdAt: string;
+  /** @nullable */
+  completedAt?: string | null;
 }
 
 export type CampaignCostUpdate = CampaignCostInput & {
@@ -1240,4 +1368,9 @@ export const ListActivityTypeConfigurationsStatus = {
   draft: 'draft',
   published: 'published',
 } as const;
+
+export type ListDeliveryPlatformConnectionsParams = {
+channelValueId?: string;
+activityId?: string;
+};
 

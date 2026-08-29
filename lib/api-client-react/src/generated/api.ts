@@ -52,7 +52,13 @@ import type {
   ConflictResolutionInput,
   CostDimensionAllocation,
   CostDimensionPlanInput,
+  DeliveryPlatformConnection,
+  DeliveryPlatformConnectionInput,
+  DeliveryPlatformConnectionUpdate,
   ErrorEnvelope,
+  ExecutionPublishAttempt,
+  ExecutionPublishInput,
+  ExecutionPublishResult,
   FiscalCalendar,
   FiscalCalendarInput,
   FiscalCalendarSnapshot,
@@ -68,6 +74,7 @@ import type {
   LegacyTaxonomyValue,
   ListActivityTypeConfigurationsParams,
   ListCampaignsParams,
+  ListDeliveryPlatformConnectionsParams,
   ListGovernedValuesParams,
   ListTaxonomyValuesParams,
   LogoutBrowserSessionParams,
@@ -2288,6 +2295,215 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getPublishActivityTypeConfigurationMutationOptions(options));
     }
 
+export const getListDeliveryPlatformConnectionsUrl = (params?: ListDeliveryPlatformConnectionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/delivery-platform-connections?${stringifiedParams}` : `/api/delivery-platform-connections`
+}
+
+export const listDeliveryPlatformConnections = async (params?: ListDeliveryPlatformConnectionsParams, options?: Parameters<typeof customFetch>[1]): Promise<DeliveryPlatformConnection[]> => {
+
+  return customFetch<DeliveryPlatformConnection[]>(getListDeliveryPlatformConnectionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeliveryPlatformConnectionsQueryKey = (params?: ListDeliveryPlatformConnectionsParams,) => {
+    return [
+    `/api/delivery-platform-connections`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDeliveryPlatformConnectionsQueryOptions = <TData = Awaited<ReturnType<typeof listDeliveryPlatformConnections>>, TError = ErrorType<unknown>>(params?: ListDeliveryPlatformConnectionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliveryPlatformConnections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeliveryPlatformConnectionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeliveryPlatformConnections>>> = ({ signal }) => listDeliveryPlatformConnections(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeliveryPlatformConnections>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDeliveryPlatformConnectionsQueryResult = NonNullable<Awaited<ReturnType<typeof listDeliveryPlatformConnections>>>
+export type ListDeliveryPlatformConnectionsQueryError = ErrorType<unknown>
+
+
+
+export function useListDeliveryPlatformConnections<TData = Awaited<ReturnType<typeof listDeliveryPlatformConnections>>, TError = ErrorType<unknown>>(
+ params?: ListDeliveryPlatformConnectionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliveryPlatformConnections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDeliveryPlatformConnectionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateDeliveryPlatformConnectionUrl = () => {
+
+
+
+
+  return `/api/delivery-platform-connections`
+}
+
+export const createDeliveryPlatformConnection = async (deliveryPlatformConnectionInput: DeliveryPlatformConnectionInput, options?: Parameters<typeof customFetch>[1]): Promise<DeliveryPlatformConnection> => {
+
+  return customFetch<DeliveryPlatformConnection>(getCreateDeliveryPlatformConnectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(deliveryPlatformConnectionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateDeliveryPlatformConnectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDeliveryPlatformConnection>>, TError,{data: BodyType<DeliveryPlatformConnectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDeliveryPlatformConnection>>, TError,{data: BodyType<DeliveryPlatformConnectionInput>}, TContext> => {
+
+const mutationKey = ['createDeliveryPlatformConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDeliveryPlatformConnection>>, {data: BodyType<DeliveryPlatformConnectionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDeliveryPlatformConnection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDeliveryPlatformConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof createDeliveryPlatformConnection>>>
+    export type CreateDeliveryPlatformConnectionMutationBody = BodyType<DeliveryPlatformConnectionInput>
+    export type CreateDeliveryPlatformConnectionMutationError = ErrorType<void>
+
+    export const useCreateDeliveryPlatformConnection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDeliveryPlatformConnection>>, TError,{data: BodyType<DeliveryPlatformConnectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDeliveryPlatformConnection>>,
+        TError,
+        {data: BodyType<DeliveryPlatformConnectionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateDeliveryPlatformConnectionMutationOptions(options));
+    }
+
+export const getUpdateDeliveryPlatformConnectionUrl = (connectionId: string,) => {
+
+
+
+
+  return `/api/delivery-platform-connections/${connectionId}`
+}
+
+export const updateDeliveryPlatformConnection = async (connectionId: string,
+    deliveryPlatformConnectionUpdate: DeliveryPlatformConnectionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<DeliveryPlatformConnection> => {
+
+  return customFetch<DeliveryPlatformConnection>(getUpdateDeliveryPlatformConnectionUrl(connectionId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(deliveryPlatformConnectionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateDeliveryPlatformConnectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDeliveryPlatformConnection>>, TError,{connectionId: string;data: BodyType<DeliveryPlatformConnectionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDeliveryPlatformConnection>>, TError,{connectionId: string;data: BodyType<DeliveryPlatformConnectionUpdate>}, TContext> => {
+
+const mutationKey = ['updateDeliveryPlatformConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDeliveryPlatformConnection>>, {connectionId: string;data: BodyType<DeliveryPlatformConnectionUpdate>}> = (props) => {
+          const {connectionId,data} = props ?? {};
+
+          return  updateDeliveryPlatformConnection(connectionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDeliveryPlatformConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof updateDeliveryPlatformConnection>>>
+    export type UpdateDeliveryPlatformConnectionMutationBody = BodyType<DeliveryPlatformConnectionUpdate>
+    export type UpdateDeliveryPlatformConnectionMutationError = ErrorType<void>
+
+    export const useUpdateDeliveryPlatformConnection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDeliveryPlatformConnection>>, TError,{connectionId: string;data: BodyType<DeliveryPlatformConnectionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDeliveryPlatformConnection>>,
+        TError,
+        {connectionId: string;data: BodyType<DeliveryPlatformConnectionUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateDeliveryPlatformConnectionMutationOptions(options));
+    }
+
 export const getGetCampaignUrl = (campaignKey: string,) => {
 
 
@@ -3225,6 +3441,209 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getVersionActivityExecutionMutationOptions(options));
     }
+
+export const getPreviewActivityExecutionPublishUrl = (executionKey: string,) => {
+
+
+
+
+  return `/api/executions/${executionKey}/publish-preview`
+}
+
+export const previewActivityExecutionPublish = async (executionKey: string,
+    executionPublishInput: ExecutionPublishInput, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPublishResult> => {
+
+  return customFetch<ExecutionPublishResult>(getPreviewActivityExecutionPublishUrl(executionKey),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(executionPublishInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewActivityExecutionPublishMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewActivityExecutionPublish>>, TError,{executionKey: string;data: BodyType<ExecutionPublishInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewActivityExecutionPublish>>, TError,{executionKey: string;data: BodyType<ExecutionPublishInput>}, TContext> => {
+
+const mutationKey = ['previewActivityExecutionPublish'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewActivityExecutionPublish>>, {executionKey: string;data: BodyType<ExecutionPublishInput>}> = (props) => {
+          const {executionKey,data} = props ?? {};
+
+          return  previewActivityExecutionPublish(executionKey,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewActivityExecutionPublishMutationResult = NonNullable<Awaited<ReturnType<typeof previewActivityExecutionPublish>>>
+    export type PreviewActivityExecutionPublishMutationBody = BodyType<ExecutionPublishInput>
+    export type PreviewActivityExecutionPublishMutationError = ErrorType<void>
+
+    export const usePreviewActivityExecutionPublish = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewActivityExecutionPublish>>, TError,{executionKey: string;data: BodyType<ExecutionPublishInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewActivityExecutionPublish>>,
+        TError,
+        {executionKey: string;data: BodyType<ExecutionPublishInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewActivityExecutionPublishMutationOptions(options));
+    }
+
+export const getPublishActivityExecutionUrl = (executionKey: string,) => {
+
+
+
+
+  return `/api/executions/${executionKey}/publish`
+}
+
+export const publishActivityExecution = async (executionKey: string,
+    executionPublishInput: ExecutionPublishInput, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPublishResult> => {
+
+  return customFetch<ExecutionPublishResult>(getPublishActivityExecutionUrl(executionKey),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(executionPublishInput)
+  }
+);}
+
+
+
+
+
+export const getPublishActivityExecutionMutationOptions = <TError = ErrorType<void | ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishActivityExecution>>, TError,{executionKey: string;data: BodyType<ExecutionPublishInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishActivityExecution>>, TError,{executionKey: string;data: BodyType<ExecutionPublishInput>}, TContext> => {
+
+const mutationKey = ['publishActivityExecution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishActivityExecution>>, {executionKey: string;data: BodyType<ExecutionPublishInput>}> = (props) => {
+          const {executionKey,data} = props ?? {};
+
+          return  publishActivityExecution(executionKey,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishActivityExecutionMutationResult = NonNullable<Awaited<ReturnType<typeof publishActivityExecution>>>
+    export type PublishActivityExecutionMutationBody = BodyType<ExecutionPublishInput>
+    export type PublishActivityExecutionMutationError = ErrorType<void | ErrorEnvelope>
+
+    export const usePublishActivityExecution = <TError = ErrorType<void | ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishActivityExecution>>, TError,{executionKey: string;data: BodyType<ExecutionPublishInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof publishActivityExecution>>,
+        TError,
+        {executionKey: string;data: BodyType<ExecutionPublishInput>},
+        TContext
+      > => {
+      return useMutation(getPublishActivityExecutionMutationOptions(options));
+    }
+
+export const getListExecutionPublishAttemptsUrl = (executionKey: string,) => {
+
+
+
+
+  return `/api/executions/${executionKey}/publish-attempts`
+}
+
+export const listExecutionPublishAttempts = async (executionKey: string, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionPublishAttempt[]> => {
+
+  return customFetch<ExecutionPublishAttempt[]>(getListExecutionPublishAttemptsUrl(executionKey),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListExecutionPublishAttemptsQueryKey = (executionKey: string,) => {
+    return [
+    `/api/executions/${executionKey}/publish-attempts`
+    ] as const;
+    }
+
+
+export const getListExecutionPublishAttemptsQueryOptions = <TData = Awaited<ReturnType<typeof listExecutionPublishAttempts>>, TError = ErrorType<unknown>>(executionKey: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExecutionPublishAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListExecutionPublishAttemptsQueryKey(executionKey);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listExecutionPublishAttempts>>> = ({ signal }) => listExecutionPublishAttempts(executionKey, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: executionKey !== null && executionKey !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listExecutionPublishAttempts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListExecutionPublishAttemptsQueryResult = NonNullable<Awaited<ReturnType<typeof listExecutionPublishAttempts>>>
+export type ListExecutionPublishAttemptsQueryError = ErrorType<unknown>
+
+
+
+export function useListExecutionPublishAttempts<TData = Awaited<ReturnType<typeof listExecutionPublishAttempts>>, TError = ErrorType<unknown>>(
+ executionKey: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExecutionPublishAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListExecutionPublishAttemptsQueryOptions(executionKey,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateCampaignCostUrl = (campaignKey: string,) => {
 
