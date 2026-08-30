@@ -233,6 +233,7 @@ export function buildExecutionDeliveryPayload(input: {
     deliveryStartDate: string;
     deliveryEndDate: string;
     configurationAnswers: unknown;
+    productValueIds: string[];
   };
   protectedMcp: boolean;
 }) {
@@ -251,6 +252,8 @@ export function buildExecutionDeliveryPayload(input: {
           campaignKey: input.activity.campaignKey,
           deliveryStartDate: input.activity.deliveryStartDate,
           deliveryEndDate: input.activity.deliveryEndDate,
+          productValueIds: input.activity.productValueIds,
+          configuration,
         },
       }
     : {
@@ -277,6 +280,8 @@ export function buildExecutionDeliveryPayload(input: {
           landingDestination: input.activity.landingDestination,
           deliveryStartDate: input.activity.deliveryStartDate,
           deliveryEndDate: input.activity.deliveryEndDate,
+          productValueIds: input.activity.productValueIds,
+          configuration: input.activity.configurationAnswers as Record<string, unknown>,
         },
       };
   if (input.protectedMcp && (!MCP_DELIVERY_INTENTS.has(payload.intent as string) || containsRawPrompt(payload))) {

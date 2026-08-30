@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ExecutionPublishResultPayload = { [key: string]: unknown };
+export type ExecutionDeliveryPayloadExecution = {
+  key: string;
+  version: number;
+  [key: string]: unknown;
+ };

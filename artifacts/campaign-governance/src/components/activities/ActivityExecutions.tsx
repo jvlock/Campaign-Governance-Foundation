@@ -12,7 +12,8 @@ import {
   usePublishActivityExecution,
   useListExecutionPublishAttempts,
   getListExecutionPublishAttemptsQueryKey,
-  type ActivityExecution
+  type ActivityExecution,
+  type CampaignActivityDetail
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +23,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CreateExecutionDialog } from "./CreateExecutionDialog";
-import { Loader2, Copy, GitBranch, FileImage, Edit3, Send, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { Loader2, Copy, GitBranch, FileImage, Edit3, Send, CheckCircle2, AlertTriangle, Eye, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export function ActivityExecutions({ activityId }: { activityId: string }) {
+export function ActivityExecutions({ activity }: { activity: CampaignActivityDetail }) {
+  const activityId = activity.id;
   const { data: executions, isLoading } = useListActivityExecutions(activityId, {
     query: { queryKey: getListActivityExecutionsQueryKey(activityId) }
   });
@@ -34,7 +36,7 @@ export function ActivityExecutions({ activityId }: { activityId: string }) {
     <div className="bg-card border rounded-md shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="p-3 border-b flex justify-between items-center bg-muted/10">
         <h5 className="font-semibold text-sm">Lineage & Executions</h5>
-        <CreateExecutionDialog activityId={activityId} />
+        <CreateExecutionDialog activity={activity} />
       </div>
       
       {isLoading ? (
@@ -42,22 +44,24 @@ export function ActivityExecutions({ activityId }: { activityId: string }) {
       ) : !executions || executions.length === 0 ? (
         <div className="p-8 text-center text-sm text-muted-foreground italic bg-background">No executions recorded yet. Create one to begin.</div>
       ) : (
-        <table className="w-full text-sm text-left bg-background">
-          <thead className="bg-muted/5 text-xs uppercase tracking-wider text-muted-foreground border-b font-bold">
-            <tr>
-              <th className="px-4 py-3">Variant Key</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Version</th>
-              <th className="px-4 py-3">Lineage</th>
-              <th className="px-4 py-3">Delivery</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {executions.map(ex => <ExecutionRow key={ex.executionKey} execution={ex} activityId={activityId} />)}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto" role="region" aria-label="Activity executions" tabIndex={0}>
+          <table className="w-full min-w-[900px] text-sm text-left bg-background">
+            <thead className="bg-muted/5 text-xs uppercase tracking-wider text-muted-foreground border-b font-bold">
+              <tr>
+                <th className="px-4 py-3">Variant Key</th>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Version</th>
+                <th className="px-4 py-3">Lineage</th>
+                <th className="px-4 py-3">Delivery</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {executions.map(ex => <ExecutionRow key={ex.executionKey} execution={ex} activityId={activityId} />)}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -125,7 +129,7 @@ function ExecutionRow({ execution, activityId }: { execution: ActivityExecution,
         <SyncStatus execution={execution} />
       </td>
       <td className="px-4 py-3 text-right">
-        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
           <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={handleCopy} disabled={copyMutation.isPending}>
             <Copy className="w-3.5 h-3.5 mr-1" /> Copy
           </Button>
@@ -156,7 +160,7 @@ function SyncStatus({ execution }: { execution: ActivityExecution }) {
 function PublishExecutionDialog({ execution, activityId }: { execution: ActivityExecution, activityId: string }) {
   const [open, setOpen] = useState(false);
   const [platformConnectionId, setPlatformConnectionId] = useState("");
-  const [previewPayload, setPreviewPayload] = useState<Record<string, unknown> | null>(null);
+  const [previewPayload, setPreviewPayload] = useState<any | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: connections, isLoading } = useListDeliveryPlatformConnections(
@@ -248,11 +252,41 @@ function PublishExecutionDialog({ execution, activityId }: { execution: Activity
             )}
           </div>
           {previewPayload && (
-            <div className="space-y-2">
-              <Label>Validated payload preview</Label>
-              <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-[11px] whitespace-pre-wrap break-all">
-                {JSON.stringify(previewPayload, null, 2)}
-              </pre>
+            <div className="space-y-4 border p-4 bg-muted/20 rounded-md">
+              <div className="flex items-start gap-2">
+                <Info className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <h4 className="text-sm font-semibold">Server-Derived Payload</h4>
+                  <p className="text-xs text-muted-foreground">The platform integration payload below has been assembled securely by the server. Identity keys, UTM strings, lineage links, and connection metadata are injected automatically; they cannot be spoofed by the client.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {['campaign', 'activity', 'execution', 'connection'].map(key => {
+                  const val = previewPayload[key];
+                  if (!val || typeof val !== 'object') return null;
+                  return (
+                    <div key={key} className="space-y-1">
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{key} Context</h5>
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(val).map(([k, v]) => (
+                          <div key={k} className="bg-background border rounded px-2 py-1 flex justify-between">
+                            <span className="text-[10px] uppercase text-muted-foreground">{k}</span>
+                            <span className="text-xs font-medium font-mono ml-2 truncate max-w-[120px]">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-1">
+                <Label>Raw JSON</Label>
+                <pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-[10px] whitespace-pre-wrap break-all">
+                  {JSON.stringify(previewPayload, null, 2)}
+                </pre>
+              </div>
             </div>
           )}
           {attempts && attempts.length > 0 && (

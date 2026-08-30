@@ -348,10 +348,11 @@ router.post("/campaigns/:campaignKey/planning-periods/generate", async (req, res
     db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey)),
     db.select().from(campaignBudgetsTable).where(eq(campaignBudgetsTable.campaignKey, params.data.campaignKey)),
   ]);
-  if (!campaign || !budget || !campaign.startDate || (!campaign.endDate && !campaign.reviewDate)) {
+  const missingEffectiveEnd = campaign?.isEvergreen ? !campaign.reviewDate : !campaign?.endDate;
+  if (!campaign || !budget || !campaign.startDate || missingEffectiveEnd) {
     res.status(409).json({ error: "Campaign dates, evergreen review date, and budget must be configured first" }); return;
   }
-  const endDate = campaign.endDate ?? campaign.reviewDate!;
+  const endDate = campaign.isEvergreen ? campaign.reviewDate! : campaign.endDate!;
   const allPeriods = await db.select().from(fiscalPeriodsTable)
     .where(eq(fiscalPeriodsTable.snapshotId, budget.fiscalCalendarSnapshotId))
     .orderBy(asc(fiscalPeriodsTable.startDate));
@@ -433,7 +434,9 @@ router.post("/campaigns/:campaignKey/planning-periods/generate", async (req, res
       });
       return inserted;
     });
-    res.json(GenerateCampaignPlanningPeriodsResponse.parse(rows.map(planningPeriodResponse)));
+    const fiscalById = new Map(allPeriods.map((period) => [period.id, period]));
+    res.json(GenerateCampaignPlanningPeriodsResponse.parse(rows.map((row) =>
+      planningPeriodResponse(row, fiscalById.get(row.fiscalPeriodId)!))));
   } catch (error: any) {
     if (error.message === "LOCKED") {
       res.status(423).json({ error: "Closed planning periods cannot be regenerated" });
@@ -467,7 +470,9 @@ router.patch("/planning-periods/:planningPeriodId", async (req, res): Promise<vo
     return updated;
   });
   if (!row) { res.status(423).json({ error: "Period is closed or the row version is stale" }); return; }
-  res.json(UpdateCampaignPlanningPeriodResponse.parse(planningPeriodResponse(row)));
+  const [fiscalPeriod] = await db.select().from(fiscalPeriodsTable)
+    .where(eq(fiscalPeriodsTable.id, row.fiscalPeriodId));
+  res.json(UpdateCampaignPlanningPeriodResponse.parse(planningPeriodResponse(row, fiscalPeriod!)));
 });
 
 router.post("/planning-periods/:planningPeriodId/close", async (req, res): Promise<void> => {
@@ -488,7 +493,9 @@ router.post("/planning-periods/:planningPeriodId/close", async (req, res): Promi
     return updated;
   });
   if (!row) { res.status(409).json({ error: "Planning period is already closed or does not exist" }); return; }
-  res.json(CloseCampaignPlanningPeriodResponse.parse(planningPeriodResponse(row)));
+  const [fiscalPeriod] = await db.select().from(fiscalPeriodsTable)
+    .where(eq(fiscalPeriodsTable.id, row.fiscalPeriodId));
+  res.json(CloseCampaignPlanningPeriodResponse.parse(planningPeriodResponse(row, fiscalPeriod!)));
 });
 
 router.post("/planning-periods/:planningPeriodId/reopen", async (req, res): Promise<void> => {
@@ -536,7 +543,9 @@ router.post("/planning-periods/:planningPeriodId/reopen", async (req, res): Prom
     return updated;
   });
   if (!row) { res.status(409).json({ error: "Only a closed planning period may be reopened" }); return; }
-  res.json(ReopenCampaignPlanningPeriodResponse.parse(planningPeriodResponse(row)));
+  const [fiscalPeriod] = await db.select().from(fiscalPeriodsTable)
+    .where(eq(fiscalPeriodsTable.id, row.fiscalPeriodId));
+  res.json(ReopenCampaignPlanningPeriodResponse.parse(planningPeriodResponse(row, fiscalPeriod!)));
 });
 
 router.put("/activities/:activityId/period-allocations", async (req, res): Promise<void> => {

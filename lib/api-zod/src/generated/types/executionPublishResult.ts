@@ -7,14 +7,14 @@
  */
 import type { ActivityExecution } from './activityExecution';
 import type { DeliveryPlatformConnection } from './deliveryPlatformConnection';
+import type { ExecutionDeliveryPayload } from './executionDeliveryPayload';
 import type { ExecutionPublishResultMode } from './executionPublishResultMode';
-import type { ExecutionPublishResultPayload } from './executionPublishResultPayload';
 
 export interface ExecutionPublishResult {
   mode: ExecutionPublishResultMode;
   idempotencyKey: string;
   platformConnection: DeliveryPlatformConnection;
-  payload: ExecutionPublishResultPayload;
+  payload: ExecutionDeliveryPayload;
   execution: ActivityExecution;
   /** @nullable */
   externalId?: string | null;

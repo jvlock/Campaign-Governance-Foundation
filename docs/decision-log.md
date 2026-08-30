@@ -99,3 +99,9 @@
 **Decision:** MCP activity configuration stores controlled intent categories and rejects raw prompt material recursively from destinations, analytics/external identifiers, answers, and execution lineage/configuration.
 
 **Reason:** Raw prompts are unsafe and unstable analytics dimensions and must never be encoded into URLs or tracking parameters.
+
+## 2026-08-30 — Derived planning and delivery context
+
+**Decision:** Campaign planning-period responses include a nested projection of their immutable fiscal-period reference. Publish preview requests continue to accept only the delivery connection; campaign key, activity delivery dates, products, configuration, and immutable execution identity are derived by the server. Protected MCP payloads expose only controlled intent configuration.
+
+**Reason:** Dependent workflow fields must reload consistently without clients guessing labels or submitting duplicated facts that can drift from governed campaign, fiscal, and execution records.

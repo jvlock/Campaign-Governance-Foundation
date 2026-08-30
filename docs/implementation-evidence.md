@@ -168,3 +168,34 @@ Known gaps:
 
 - This phase records external platform identifiers but does not create or synchronize records in email, advertising, event, sales, or analytics systems.
 - Asset IDs are reusable governed references; binary asset storage and asset-library administration remain separate concerns.
+
+## Dependent workflow fields — 2026-08-30
+
+Delivered:
+
+- Campaign setup resolves the selected active fiscal snapshot into read-only fiscal years, quarters, periods, and inclusive boundaries as dates change. Evergreen campaigns use their review date as the effective fiscal horizon.
+- Campaign detail responses project authoritative fiscal-period metadata onto planning periods without duplicating labels in campaign persistence.
+- Activity planning distinguishes governed configuration identity/version, inherited locks, permitted overrides, fiscal coverage, and an exact integer-minor-unit allocation preview.
+- Allocation previews use the same inclusive-day, largest-remainder method as the server. The server remains authoritative on save and rejects coverage gaps, conflicting inheritance, stale updates, and locked periods.
+- Execution creation starts with safe parent-activity assets and configuration context while retaining a fresh execution key, draft status, empty external identifiers, and empty lineage.
+- Publish dry runs accept only a governed delivery connection choice. Campaign, activity, product, configuration, and execution facts are assembled from server records; protected MCP payloads continue to exclude raw prompt material.
+- Execution actions are keyboard-discoverable, and the execution table provides a labeled, focusable overflow region at narrow widths.
+
+Verification:
+
+- OpenAPI generation and generated React Query/Zod clients: passed.
+- Full workspace TypeScript check: passed.
+- Production API and web builds: passed.
+- Unit suite: **3 passed, 0 failed**.
+- Database suite: **14 passed, 0 failed** after applying the existing idempotent schema-push integrity repair to the development database.
+- API suite: **14 passed, 0 failed**, including normal and evergreen fiscal metadata, deterministic reload order, exact activity allocations, governed publish derivation, client-field spoof rejection, and evergreen review-date precedence when an end date is also supplied.
+- Browser E2E passed on desktop and 900×1000 tablet for campaign fiscal coverage, incomplete-coverage feedback, activity allocation, execution defaults, governed delivery-platform selection, and server-derived publish preview. The final external publish was intentionally not called.
+- Independent architecture review passed after hardening evergreen server behavior, date serialization, deterministic ordering, integer preview arithmetic, keyboard action visibility, and responsive overflow.
+
+Automated browser evidence:
+
+- Tablet campaign readiness and fiscal context: `y2j4qb`
+- Tablet activity and allocation layout: `6a77ux`
+- Tablet execution defaults: `q9j6uu`
+- Tablet governed publish preview: `ehez3i`
+- Desktop governed publish preview: `1olnm0`

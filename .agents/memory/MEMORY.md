@@ -3,3 +3,4 @@
 - [Closed-period serialization](closed-period-serialization.md) — finance mutations and period close must lock the same campaign planning rows before status checks and writes.
 - [Safe workbook imports](safe-workbook-imports.md) — parse only required OOXML worksheet parts; avoid unpatched xlsx libraries and whole-workbook loaders.
 - [Published execution identity](published-execution-identity.md) — published delivery content is immutable; copies and versions must start with fresh delivery identity.
+- [Generated date-only responses](generated-date-only-responses.md) — OpenAPI date fields may reach the browser as midnight timestamps; normalize before calendar math.

@@ -5,6 +5,7 @@
  * Campaign Governance API
  * OpenAPI spec version: 0.2.0
  */
+import type { CampaignPlanningPeriodFiscalPeriod } from './campaignPlanningPeriodFiscalPeriod';
 import type { CampaignPlanningPeriodStatus } from './campaignPlanningPeriodStatus';
 import type { CampaignPlanningPeriodUnusedBudgetTreatment } from './campaignPlanningPeriodUnusedBudgetTreatment';
 import type { MinorMoney } from './minorMoney';
@@ -14,6 +15,7 @@ export interface CampaignPlanningPeriod {
   stableKey: string;
   campaignKey: string;
   fiscalPeriodId: string;
+  fiscalPeriod: CampaignPlanningPeriodFiscalPeriod;
   readableName: string;
   requestedMinor: MinorMoney;
   approvedMinor: MinorMoney;

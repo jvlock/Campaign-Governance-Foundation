@@ -225,7 +225,7 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
 
                </div>
                
-               <ActivityExecutions activityId={activity.id} />
+               <ActivityExecutions activity={activity} />
             </div>
           </td>
         </tr>

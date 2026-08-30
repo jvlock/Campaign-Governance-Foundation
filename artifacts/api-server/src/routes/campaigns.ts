@@ -164,7 +164,7 @@ router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
     db.select().from(campaignHistoryTable).where(eq(campaignHistoryTable.campaignKey, campaign.campaignKey)).orderBy(desc(campaignHistoryTable.createdAt)),
     db.select().from(budgetHistoryTable).where(eq(budgetHistoryTable.campaignKey, campaign.campaignKey)).orderBy(desc(budgetHistoryTable.createdAt)),
   ]);
-  const [activityProducts, activityAllocations, activityExecutions, activityConfigurations, costDimensions] = await Promise.all([
+  const [activityProducts, activityAllocations, activityExecutions, activityConfigurations, costDimensions, fiscalPeriods] = await Promise.all([
     activities.length
       ? db.select().from(activityProductAssociationsTable).where(inArray(activityProductAssociationsTable.activityId, activities.map((item) => item.id)))
       : Promise.resolve([] as (typeof activityProductAssociationsTable.$inferSelect)[]),
@@ -183,6 +183,9 @@ router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
     costs.length
       ? db.select().from(campaignCostDimensionsTable).where(inArray(campaignCostDimensionsTable.costId, costs.map((item) => item.id)))
       : Promise.resolve([] as (typeof campaignCostDimensionsTable.$inferSelect)[]),
+    periods.length
+      ? db.select().from(fiscalPeriodsTable).where(inArray(fiscalPeriodsTable.id, periods.map((item) => item.fiscalPeriodId)))
+      : Promise.resolve([] as (typeof fiscalPeriodsTable.$inferSelect)[]),
   ]);
   res.json(GetCampaignResponse.parse({
     ...campaignResponse(campaign),
@@ -207,7 +210,10 @@ router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
         metadata: allocation.metadata as Record<string, unknown>,
       })),
     })),
-    planningPeriods: periods.map(planningPeriodResponse),
+    planningPeriods: periods.map((period) => planningPeriodResponse(
+      period,
+      fiscalPeriods.find((fiscalPeriod) => fiscalPeriod.id === period.fiscalPeriodId)!,
+    )).sort((a, b) => a.fiscalPeriod.startDate.localeCompare(b.fiscalPeriod.startDate)),
     history: [...history, ...budgetHistory]
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .map((item) => ({
@@ -774,10 +780,21 @@ router.patch("/activities/:activityId", async (req, res): Promise<void> => {
   }
 });
 
-function planningPeriodResponse(row: typeof campaignPlanningPeriodsTable.$inferSelect) {
+function planningPeriodResponse(
+  row: typeof campaignPlanningPeriodsTable.$inferSelect,
+  fiscalPeriod: typeof fiscalPeriodsTable.$inferSelect,
+) {
   const approved = BigInt(row.approvedMinor);
   return {
     ...row,
+    fiscalPeriod: {
+      stableKey: fiscalPeriod.stableKey,
+      fiscalYear: fiscalPeriod.fiscalYear,
+      fiscalQuarter: fiscalPeriod.fiscalQuarter,
+      fiscalPeriod: fiscalPeriod.fiscalPeriod,
+      startDate: fiscalPeriod.startDate,
+      endDate: fiscalPeriod.endDate,
+    },
     remainingMinor: (approved - BigInt(row.actualMinor) - BigInt(row.committedMinor)).toString(),
     varianceMinor: (approved - BigInt(row.forecastMinor)).toString(),
     closedAt: row.closedAt?.toISOString() ?? null,

@@ -36,6 +36,8 @@ Money crosses API and persistence boundaries as base-10 integer minor-unit strin
 
 Administrators publish immutable versions of configurable fiscal calendars. Each snapshot contains explicit fiscal year, quarter, period, start/end dates and status, so later rule changes cannot rewrite historical boundaries. Campaign dates select every touched period and create stable campaign-planning-period keys below the unchanged Campaign Key. Evergreen campaigns plan through their required review date.
 
+Campaign planning-period API representations join their referenced immutable fiscal period and expose its stable key, fiscal year, quarter, label, and boundaries as a nested `fiscalPeriod`. These labels remain derived reference data and are not duplicated onto campaign planning rows. Delivery publish previews likewise accept only a platform connection choice; campaign identity, activity dates, product associations, configuration context, and execution identity are assembled from authoritative server records.
+
 Activities preserve delivery dates and an optional accounting date. Cross-period costs support invoice-date, daily, monthly, and exactly reconciled custom allocation. Closed planning periods reject value changes and activity allocation. Reopening changes only the lock state and requires both a reason and named approver; every budget mutation stores an append-only snapshot.
 
 ## Governed taxonomy model

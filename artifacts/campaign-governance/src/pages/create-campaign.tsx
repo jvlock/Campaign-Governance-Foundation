@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +7,8 @@ import {
   useCreateCampaign, 
   useSetCampaignBudget,
   useListFiscalCalendars,
+  useGetActiveFiscalCalendarSnapshot,
+  getGetActiveFiscalCalendarSnapshotQueryKey,
   getListCampaignsQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -62,6 +64,12 @@ const formSchema = z.object({
   path: ["endDate"]
 });
 
+const DAY_MS = 86_400_000;
+
+function isoDay(value: string) {
+  return Date.parse(`${value.slice(0, 10)}T00:00:00Z`);
+}
+
 export default function CreateCampaign() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -70,7 +78,6 @@ export default function CreateCampaign() {
   const [createdCampaignKey, setCreatedCampaignKey] = useState<string | null>(null);
 
   const { data: calendars } = useListFiscalCalendars();
-  const primaryCalendar = calendars?.[0];
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,7 +87,7 @@ export default function CreateCampaign() {
       relationshipType: "new",
       objective: "",
       isEvergreen: false,
-      fiscalCalendarId: primaryCalendar?.id || "",
+      fiscalCalendarId: "",
       requestedTotal: "0.00",
       approvedTotal: "0.00",
       currency: "USD",
@@ -91,7 +98,82 @@ export default function CreateCampaign() {
     }
   });
 
+  // Async default selection for first active fiscal calendar
+  useEffect(() => {
+    if (calendars && calendars.length > 0 && !form.getValues("fiscalCalendarId")) {
+      const activeCalendar = calendars.find(c => c.activeSnapshotId) || calendars[0];
+      if (activeCalendar) {
+        form.setValue("fiscalCalendarId", activeCalendar.id);
+      }
+    }
+  }, [calendars, form]);
+
+  const fiscalCalendarId = form.watch("fiscalCalendarId");
   const isEvergreen = form.watch("isEvergreen");
+  const startDate = form.watch("startDate");
+  const endDate = form.watch("endDate");
+  const reviewDate = form.watch("reviewDate");
+
+  const { data: snapshot } = useGetActiveFiscalCalendarSnapshot(fiscalCalendarId, {
+    query: {
+      enabled: !!fiscalCalendarId,
+      queryKey: getGetActiveFiscalCalendarSnapshotQueryKey(fiscalCalendarId)
+    }
+  });
+
+  const effectiveEnd = useMemo(() => {
+    if (isEvergreen) {
+      return reviewDate;
+    }
+    return endDate;
+  }, [isEvergreen, reviewDate, endDate]);
+
+  const coveredPeriods = useMemo(() => {
+    if (!snapshot || !startDate || !effectiveEnd) return [];
+
+    // ISO date boundary inclusive match
+    const startStr = format(startDate, "yyyy-MM-dd");
+    const endStr = format(effectiveEnd, "yyyy-MM-dd");
+
+    return snapshot.periods.filter(p => {
+      // Period ends on or after our start
+      const afterStart = p.endDate.slice(0, 10) >= startStr;
+      // If we have an end date, period starts on or before our end
+      const beforeEnd = p.startDate.slice(0, 10) <= endStr;
+      return afterStart && beforeEnd;
+    }).sort((a, b) => a.startDate.slice(0, 10).localeCompare(b.startDate.slice(0, 10)));
+  }, [snapshot, startDate, effectiveEnd]);
+
+  const fiscalCoverage = useMemo(() => {
+    if (!startDate) return { state: "waiting" as const, message: "Choose a start date to resolve fiscal coverage." };
+    if (!effectiveEnd) {
+      return {
+        state: "waiting" as const,
+        message: isEvergreen
+          ? "Choose a review date to resolve evergreen fiscal coverage."
+          : "Choose an end date to resolve fiscal coverage.",
+      };
+    }
+    if (!snapshot) return { state: "waiting" as const, message: "Loading the active fiscal snapshot." };
+    if (!coveredPeriods.length) {
+      return { state: "uncovered" as const, message: "The selected date range falls outside the active fiscal snapshot." };
+    }
+
+    const startStr = format(startDate, "yyyy-MM-dd");
+    const endStr = format(effectiveEnd, "yyyy-MM-dd");
+    const coveredDays = coveredPeriods.reduce((total, period) => {
+      const periodStart = period.startDate.slice(0, 10);
+      const periodEnd = period.endDate.slice(0, 10);
+      const overlapStart = periodStart > startStr ? periodStart : startStr;
+      const overlapEnd = periodEnd < endStr ? periodEnd : endStr;
+      return total + Math.max(0, Math.floor((isoDay(overlapEnd) - isoDay(overlapStart)) / DAY_MS) + 1);
+    }, 0);
+    const expectedDays = Math.floor((isoDay(endStr) - isoDay(startStr)) / DAY_MS) + 1;
+
+    return coveredDays === expectedDays
+      ? { state: "complete" as const, message: `${expectedDays} calendar days are covered by the active snapshot.` }
+      : { state: "uncovered" as const, message: `${expectedDays - coveredDays} calendar day(s) are not covered by the active snapshot.` };
+  }, [coveredPeriods, effectiveEnd, isEvergreen, snapshot, startDate]);
 
   const createCampaign = useCreateCampaign();
   const setCampaignBudget = useSetCampaignBudget();
@@ -99,6 +181,10 @@ export default function CreateCampaign() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     let campaignKey = createdCampaignKey;
     try {
+      if (values.startDate && (values.isEvergreen ? values.reviewDate : values.endDate)
+          && fiscalCoverage.state !== "complete") {
+        throw new Error("The selected dates must be fully covered by the active fiscal calendar snapshot");
+      }
       if (!campaignKey) {
         // 1. Create the campaign
         const result = await createCampaign.mutateAsync({
@@ -443,11 +529,11 @@ export default function CreateCampaign() {
                   control={form.control}
                   name="fiscalCalendarId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="md:col-span-2">
                       <FormLabel className="text-foreground font-semibold">Governing Fiscal Calendar</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="bg-background">
+                          <SelectTrigger className="bg-background max-w-xl">
                             <SelectValue placeholder="Select calendar" />
                           </SelectTrigger>
                         </FormControl>
@@ -459,10 +545,48 @@ export default function CreateCampaign() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      {startDate && (
+                        <div className="mt-4 p-4 bg-muted/20 border rounded-md">
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <h4 className="text-sm font-semibold">Resolved Fiscal Coverage</h4>
+                            <Badge variant={fiscalCoverage.state === "complete" ? "default" : "outline"}>
+                              {fiscalCoverage.state === "complete" ? "Derived · complete" : "Needs attention"}
+                            </Badge>
+                          </div>
+                          {fiscalCoverage.state === "uncovered" ? (
+                            <Alert variant="destructive" className="py-2">
+                              <AlertTitle className="text-sm font-bold m-0">Incomplete fiscal coverage</AlertTitle>
+                              <AlertDescription className="text-xs">{fiscalCoverage.message}</AlertDescription>
+                            </Alert>
+                          ) : coveredPeriods.length > 0 ? (
+                            <>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {coveredPeriods.map(p => (
+                                  <div key={p.id} className="rounded-md border bg-background px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="font-semibold text-sm">{p.fiscalYear} · {p.fiscalQuarter} · {p.fiscalPeriod}</span>
+                                      <Badge variant="secondary" className="font-mono text-[10px]">{p.stableKey}</Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">{p.startDate.slice(0, 10)} to {p.endDate.slice(0, 10)}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-2" role="status">{fiscalCoverage.message}</p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-muted-foreground" role="status">{fiscalCoverage.message}</p>
+                          )}
+                        </div>
+                      )}
+
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="currency"

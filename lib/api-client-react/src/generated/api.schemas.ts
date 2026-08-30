@@ -941,11 +941,29 @@ export const CampaignPlanningPeriodStatus = {
   closed: 'closed',
 } as const;
 
+export type CampaignPlanningPeriodFiscalPeriod = {
+  stableKey: string;
+  fiscalYear: string;
+  fiscalQuarter: string;
+  fiscalPeriod: string;
+  /**
+     * ISO calendar date
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  startDate: string;
+  /**
+     * ISO calendar date
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  endDate: string;
+};
+
 export interface CampaignPlanningPeriod {
   id: string;
   stableKey: string;
   campaignKey: string;
   fiscalPeriodId: string;
+  fiscalPeriod: CampaignPlanningPeriodFiscalPeriod;
   readableName: string;
   requestedMinor: MinorMoney;
   approvedMinor: MinorMoney;
@@ -1088,13 +1106,43 @@ export const ExecutionPublishResultMode = {
   idempotent: 'idempotent',
 } as const;
 
-export type ExecutionPublishResultPayload = { [key: string]: unknown };
+export type ExecutionDeliveryPayloadExecution = {
+  key: string;
+  version: number;
+  [key: string]: unknown;
+ };
+
+export type ExecutionDeliveryPayloadActivityConfiguration = { [key: string]: unknown };
+
+export type ExecutionDeliveryPayloadActivity = {
+  key: string;
+  campaignKey: string;
+  /**
+     * ISO calendar date
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  deliveryStartDate: string;
+  /**
+     * ISO calendar date
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  deliveryEndDate: string;
+  productValueIds: string[];
+  configuration: ExecutionDeliveryPayloadActivityConfiguration;
+  [key: string]: unknown;
+ };
+
+export interface ExecutionDeliveryPayload {
+  intent: string;
+  execution: ExecutionDeliveryPayloadExecution;
+  activity: ExecutionDeliveryPayloadActivity;
+}
 
 export interface ExecutionPublishResult {
   mode: ExecutionPublishResultMode;
   idempotencyKey: string;
   platformConnection: DeliveryPlatformConnection;
-  payload: ExecutionPublishResultPayload;
+  payload: ExecutionDeliveryPayload;
   execution: ActivityExecution;
   /** @nullable */
   externalId?: string | null;

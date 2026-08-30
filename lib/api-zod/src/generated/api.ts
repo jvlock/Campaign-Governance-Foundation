@@ -885,6 +885,8 @@ export const getCampaignResponseTwoCostsItemOneOneCurrencyMax = 3;
 export const getCampaignResponseTwoCostsItemTwoDimensionsItemOneAllocationBasisPointsMin = 0;
 export const getCampaignResponseTwoCostsItemTwoDimensionsItemOneAllocationBasisPointsMax = 10000;
 
+export const getCampaignResponseTwoPlanningPeriodsItemFiscalPeriodStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getCampaignResponseTwoPlanningPeriodsItemFiscalPeriodEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const getCampaignResponseTwoPlanningPeriodsItemRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const getCampaignResponseTwoPlanningPeriodsItemApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const getCampaignResponseTwoPlanningPeriodsItemPlannedMinorRegExp = new RegExp('^-?[0-9]+$');
@@ -1066,6 +1068,14 @@ export const GetCampaignResponse = zod.object({
   "stableKey": zod.string(),
   "campaignKey": zod.string(),
   "fiscalPeriodId": zod.string(),
+  "fiscalPeriod": zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemFiscalPeriodStartDateRegExp).describe('ISO calendar date'),
+  "endDate": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemFiscalPeriodEndDateRegExp).describe('ISO calendar date')
+}),
   "readableName": zod.string(),
   "requestedMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "approvedMinor": zod.string().regex(getCampaignResponseTwoPlanningPeriodsItemApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
@@ -1700,6 +1710,9 @@ export const previewActivityExecutionPublishResponsePlatformConnectionOneExterna
 
 export const previewActivityExecutionPublishResponsePlatformConnectionOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
 export const previewActivityExecutionPublishResponsePlatformConnectionOneIsActiveDefault = false;
+export const previewActivityExecutionPublishResponsePayloadActivityDeliveryStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const previewActivityExecutionPublishResponsePayloadActivityDeliveryEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
 
 
 export const PreviewActivityExecutionPublishResponse = zod.object({
@@ -1719,7 +1732,21 @@ export const PreviewActivityExecutionPublishResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })),
-  "payload": zod.record(zod.string(), zod.unknown()),
+  "payload": zod.object({
+  "intent": zod.string(),
+  "execution": zod.object({
+  "key": zod.string(),
+  "version": zod.number()
+}),
+  "activity": zod.object({
+  "key": zod.string(),
+  "campaignKey": zod.string(),
+  "deliveryStartDate": zod.string().regex(previewActivityExecutionPublishResponsePayloadActivityDeliveryStartDateRegExp).describe('ISO calendar date'),
+  "deliveryEndDate": zod.string().regex(previewActivityExecutionPublishResponsePayloadActivityDeliveryEndDateRegExp).describe('ISO calendar date'),
+  "productValueIds": zod.array(zod.string()),
+  "configuration": zod.record(zod.string(), zod.unknown())
+})
+}),
   "execution": zod.object({
   "name": zod.string().min(1),
   "status": zod.string().optional(),
@@ -1770,6 +1797,9 @@ export const publishActivityExecutionResponsePlatformConnectionOneExternalIdPath
 
 export const publishActivityExecutionResponsePlatformConnectionOneExternalIdPathRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
 export const publishActivityExecutionResponsePlatformConnectionOneIsActiveDefault = false;
+export const publishActivityExecutionResponsePayloadActivityDeliveryStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const publishActivityExecutionResponsePayloadActivityDeliveryEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
 
 
 export const PublishActivityExecutionResponse = zod.object({
@@ -1789,7 +1819,21 @@ export const PublishActivityExecutionResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })),
-  "payload": zod.record(zod.string(), zod.unknown()),
+  "payload": zod.object({
+  "intent": zod.string(),
+  "execution": zod.object({
+  "key": zod.string(),
+  "version": zod.number()
+}),
+  "activity": zod.object({
+  "key": zod.string(),
+  "campaignKey": zod.string(),
+  "deliveryStartDate": zod.string().regex(publishActivityExecutionResponsePayloadActivityDeliveryStartDateRegExp).describe('ISO calendar date'),
+  "deliveryEndDate": zod.string().regex(publishActivityExecutionResponsePayloadActivityDeliveryEndDateRegExp).describe('ISO calendar date'),
+  "productValueIds": zod.array(zod.string()),
+  "configuration": zod.record(zod.string(), zod.unknown())
+})
+}),
   "execution": zod.object({
   "name": zod.string().min(1),
   "status": zod.string().optional(),
@@ -2134,6 +2178,8 @@ export const GenerateCampaignPlanningPeriodsBody = zod.object({
 })).optional().describe('Exact nonnegative period weights used for activity- or channel-led planning')
 })
 
+export const generateCampaignPlanningPeriodsResponseFiscalPeriodStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const generateCampaignPlanningPeriodsResponseFiscalPeriodEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const generateCampaignPlanningPeriodsResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const generateCampaignPlanningPeriodsResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const generateCampaignPlanningPeriodsResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
@@ -2149,6 +2195,14 @@ export const GenerateCampaignPlanningPeriodsResponseItem = zod.object({
   "stableKey": zod.string(),
   "campaignKey": zod.string(),
   "fiscalPeriodId": zod.string(),
+  "fiscalPeriod": zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.string().regex(generateCampaignPlanningPeriodsResponseFiscalPeriodStartDateRegExp).describe('ISO calendar date'),
+  "endDate": zod.string().regex(generateCampaignPlanningPeriodsResponseFiscalPeriodEndDateRegExp).describe('ISO calendar date')
+}),
   "readableName": zod.string(),
   "requestedMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "approvedMinor": zod.string().regex(generateCampaignPlanningPeriodsResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
@@ -2189,6 +2243,8 @@ export const UpdateCampaignPlanningPeriodBody = zod.object({
   "reason": zod.string().min(1)
 })
 
+export const updateCampaignPlanningPeriodResponseFiscalPeriodStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateCampaignPlanningPeriodResponseFiscalPeriodEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const updateCampaignPlanningPeriodResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const updateCampaignPlanningPeriodResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const updateCampaignPlanningPeriodResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
@@ -2204,6 +2260,14 @@ export const UpdateCampaignPlanningPeriodResponse = zod.object({
   "stableKey": zod.string(),
   "campaignKey": zod.string(),
   "fiscalPeriodId": zod.string(),
+  "fiscalPeriod": zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.string().regex(updateCampaignPlanningPeriodResponseFiscalPeriodStartDateRegExp).describe('ISO calendar date'),
+  "endDate": zod.string().regex(updateCampaignPlanningPeriodResponseFiscalPeriodEndDateRegExp).describe('ISO calendar date')
+}),
   "readableName": zod.string(),
   "requestedMinor": zod.string().regex(updateCampaignPlanningPeriodResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "approvedMinor": zod.string().regex(updateCampaignPlanningPeriodResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
@@ -2236,6 +2300,8 @@ export const CloseCampaignPlanningPeriodBody = zod.object({
   "unusedBudgetTreatment": zod.enum(['expire', 'carry_forward'])
 })
 
+export const closeCampaignPlanningPeriodResponseFiscalPeriodStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const closeCampaignPlanningPeriodResponseFiscalPeriodEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const closeCampaignPlanningPeriodResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const closeCampaignPlanningPeriodResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const closeCampaignPlanningPeriodResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
@@ -2251,6 +2317,14 @@ export const CloseCampaignPlanningPeriodResponse = zod.object({
   "stableKey": zod.string(),
   "campaignKey": zod.string(),
   "fiscalPeriodId": zod.string(),
+  "fiscalPeriod": zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.string().regex(closeCampaignPlanningPeriodResponseFiscalPeriodStartDateRegExp).describe('ISO calendar date'),
+  "endDate": zod.string().regex(closeCampaignPlanningPeriodResponseFiscalPeriodEndDateRegExp).describe('ISO calendar date')
+}),
   "readableName": zod.string(),
   "requestedMinor": zod.string().regex(closeCampaignPlanningPeriodResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "approvedMinor": zod.string().regex(closeCampaignPlanningPeriodResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
@@ -2282,6 +2356,8 @@ export const ReopenCampaignPlanningPeriodBody = zod.object({
   "approvedBy": zod.string().min(1)
 })
 
+export const reopenCampaignPlanningPeriodResponseFiscalPeriodStartDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const reopenCampaignPlanningPeriodResponseFiscalPeriodEndDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const reopenCampaignPlanningPeriodResponseRequestedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const reopenCampaignPlanningPeriodResponseApprovedMinorRegExp = new RegExp('^-?[0-9]+$');
 export const reopenCampaignPlanningPeriodResponsePlannedMinorRegExp = new RegExp('^-?[0-9]+$');
@@ -2297,6 +2373,14 @@ export const ReopenCampaignPlanningPeriodResponse = zod.object({
   "stableKey": zod.string(),
   "campaignKey": zod.string(),
   "fiscalPeriodId": zod.string(),
+  "fiscalPeriod": zod.object({
+  "stableKey": zod.string(),
+  "fiscalYear": zod.string(),
+  "fiscalQuarter": zod.string(),
+  "fiscalPeriod": zod.string(),
+  "startDate": zod.string().regex(reopenCampaignPlanningPeriodResponseFiscalPeriodStartDateRegExp).describe('ISO calendar date'),
+  "endDate": zod.string().regex(reopenCampaignPlanningPeriodResponseFiscalPeriodEndDateRegExp).describe('ISO calendar date')
+}),
   "readableName": zod.string(),
   "requestedMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseRequestedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),
   "approvedMinor": zod.string().regex(reopenCampaignPlanningPeriodResponseApprovedMinorRegExp).describe('Exact integer amount in the currency minor unit; never floating point'),

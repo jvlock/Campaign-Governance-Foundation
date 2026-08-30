@@ -40,6 +40,7 @@ import {
 } from "@workspace/api-zod";
 import {
   activityExecutionsTable,
+  activityProductAssociationsTable,
   activityTypeConfigurationsTable,
   campaignActivitiesTable,
   deliveryPlatformConnectionsTable,
@@ -436,11 +437,20 @@ async function loadPublishContext(executionKey: string, platformConnectionId: st
       .where(eq(activityTypeConfigurationsTable.id, context.activity.configurationId))
     : [];
   const protectedMcp = await isProtectedMcpConfiguration(configuration, context.activity.activityType);
+  const productAssociations = await db.select().from(activityProductAssociationsTable)
+    .where(eq(activityProductAssociationsTable.activityId, context.activity.id));
   try {
     return {
       ...context,
       connection,
-      payload: buildExecutionDeliveryPayload({ ...context, protectedMcp }),
+      payload: buildExecutionDeliveryPayload({
+        execution: context.execution,
+        activity: {
+          ...context.activity,
+          productValueIds: productAssociations.map((association) => association.productValueId),
+        },
+        protectedMcp,
+      }),
       idempotencyKey: context.execution.syncIdempotencyKey!,
     };
   } catch (error) {

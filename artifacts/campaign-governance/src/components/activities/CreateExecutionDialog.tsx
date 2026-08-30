@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateActivityExecution,
   getListActivityExecutionsQueryKey,
+  type CampaignActivityDetail
 } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export function CreateExecutionDialog({ activityId }: { activityId: string }) {
+export function CreateExecutionDialog({ activity }: { activity: CampaignActivityDetail }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -22,14 +23,25 @@ export function CreateExecutionDialog({ activityId }: { activityId: string }) {
   const form = useForm({
     defaultValues: {
       name: "",
-      status: "Draft",
+      status: "draft",
       assetIds: "",
-      externalIds: "{}",
-      creativeLineage: "{}",
-      copyLineage: "{}",
       configurationData: "{}"
     }
   });
+
+  // Seed data when opened
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: `${activity.name} Variant`,
+        status: "draft",
+        assetIds: activity.assetIds ? activity.assetIds.join(", ") : "",
+        configurationData: activity.configurationAnswers
+          ? JSON.stringify(activity.configurationAnswers, null, 2)
+          : "{}"
+      });
+    }
+  }, [open, activity, form]);
 
   const onSubmit = async (values: any) => {
     try {
@@ -42,18 +54,19 @@ export function CreateExecutionDialog({ activityId }: { activityId: string }) {
       };
 
       await createMutation.mutateAsync({
-        activityId,
+        activityId: activity.id,
         data: {
           name: values.name,
           status: values.status,
-          assetIds: values.assetIds ? values.assetIds.split(",").map((s: string) => s.trim()) : [],
-          externalIds: parseJson(values.externalIds, "External system IDs"),
-          creativeLineage: parseJson(values.creativeLineage, "Creative lineage"),
-          copyLineage: parseJson(values.copyLineage, "Copy lineage"),
-          configurationData: parseJson(values.configurationData, "Platform configuration")
+          assetIds: values.assetIds ? values.assetIds.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+          configurationData: parseJson(values.configurationData, "Platform configuration"),
+          // Do not copy lineage or external IDs on initial creation to preserve safety
+          externalIds: {},
+          creativeLineage: {},
+          copyLineage: {}
         }
       });
-      queryClient.invalidateQueries({ queryKey: getListActivityExecutionsQueryKey(activityId) });
+      queryClient.invalidateQueries({ queryKey: getListActivityExecutionsQueryKey(activity.id) });
       toast({ title: "Execution created successfully" });
       setOpen(false);
       form.reset();
@@ -78,28 +91,28 @@ export function CreateExecutionDialog({ activityId }: { activityId: string }) {
                 <FormItem><FormLabel>Execution Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
               )} />
               <FormField control={form.control} name="status" render={({field}) => (
-                <FormItem><FormLabel>Initial Status</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                <FormItem>
+                  <FormLabel>Initial Status</FormLabel>
+                  <FormControl><Input {...field} readOnly className="bg-muted/30 text-muted-foreground" /></FormControl>
+                </FormItem>
               )} />
             </div>
             
             <FormField control={form.control} name="assetIds" render={({field}) => (
-              <FormItem><FormLabel>Associated Asset IDs (comma separated)</FormLabel><FormControl><Input {...field} className="font-mono text-xs" /></FormControl></FormItem>
+              <FormItem>
+                <FormLabel>Associated Asset IDs (comma separated)</FormLabel>
+                <FormControl><Input {...field} className="font-mono text-xs" /></FormControl>
+                <FormDescription>Seeded from parent activity.</FormDescription>
+              </FormItem>
             )} />
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-              <FormField control={form.control} name="creativeLineage" render={({field}) => (
-                <FormItem><FormLabel>Creative Lineage (JSON)</FormLabel><FormControl><Textarea {...field} className="font-mono text-xs h-24 bg-muted/10" /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="copyLineage" render={({field}) => (
-                <FormItem><FormLabel>Copy Lineage (JSON)</FormLabel><FormControl><Textarea {...field} className="font-mono text-xs h-24 bg-muted/10" /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="externalIds" render={({field}) => (
-                <FormItem><FormLabel>External System IDs (JSON)</FormLabel><FormControl><Textarea {...field} className="font-mono text-xs h-24 bg-muted/10" /></FormControl></FormItem>
-              )} />
-              <FormField control={form.control} name="configurationData" render={({field}) => (
-                <FormItem><FormLabel>Platform Config (JSON)</FormLabel><FormControl><Textarea {...field} className="font-mono text-xs h-24 bg-muted/10" /></FormControl></FormItem>
-              )} />
-            </div>
+            <FormField control={form.control} name="configurationData" render={({field}) => (
+              <FormItem>
+                <FormLabel>Platform Config (JSON)</FormLabel>
+                <FormControl><Textarea {...field} className="font-mono text-xs h-32 bg-muted/10" /></FormControl>
+                <FormDescription>Seeded from activity configuration context.</FormDescription>
+              </FormItem>
+            )} />
           </form>
         </Form>
         <DialogFooter className="p-6 border-t bg-muted/5">

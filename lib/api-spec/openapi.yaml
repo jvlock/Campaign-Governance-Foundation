@@ -1196,9 +1196,32 @@ components:
         mode: { type: string, enum: [preview, publish, idempotent] }
         idempotencyKey: { type: string, format: uuid }
         platformConnection: { $ref: "#/components/schemas/DeliveryPlatformConnection" }
-        payload: { type: object, additionalProperties: true }
+        payload: { $ref: "#/components/schemas/ExecutionDeliveryPayload" }
         execution: { $ref: "#/components/schemas/ActivityExecution" }
         externalId: { type: [string, "null"] }
+    ExecutionDeliveryPayload:
+      type: object
+      required: [intent, execution, activity]
+      properties:
+        intent: { type: string }
+        execution:
+          type: object
+          required: [key, version]
+          properties:
+            key: { type: string, format: uuid }
+            version: { type: integer }
+          additionalProperties: true
+        activity:
+          type: object
+          required: [key, campaignKey, deliveryStartDate, deliveryEndDate, productValueIds, configuration]
+          properties:
+            key: { type: string, format: uuid }
+            campaignKey: { type: string, format: uuid }
+            deliveryStartDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', description: ISO calendar date }
+            deliveryEndDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', description: ISO calendar date }
+            productValueIds: { type: array, items: { type: string, format: uuid } }
+            configuration: { type: object, additionalProperties: true }
+          additionalProperties: true
     ExecutionPublishAttempt:
       type: object
       required: [id, executionKey, platformConnectionId, idempotencyKey, mode, status, requestPayload, actorId, createdAt]
@@ -1371,12 +1394,22 @@ components:
           items: { $ref: "#/components/schemas/MinorAllocationInput" }
     CampaignPlanningPeriod:
       type: object
-      required: [id, stableKey, campaignKey, fiscalPeriodId, readableName, requestedMinor, approvedMinor, plannedMinor, committedMinor, actualMinor, forecastMinor, remainingMinor, varianceMinor, status, rowVersion]
+      required: [id, stableKey, campaignKey, fiscalPeriodId, fiscalPeriod, readableName, requestedMinor, approvedMinor, plannedMinor, committedMinor, actualMinor, forecastMinor, remainingMinor, varianceMinor, status, rowVersion]
       properties:
         id: { type: string, format: uuid }
         stableKey: { type: string }
         campaignKey: { type: string, format: uuid }
         fiscalPeriodId: { type: string, format: uuid }
+        fiscalPeriod:
+          type: object
+          required: [stableKey, fiscalYear, fiscalQuarter, fiscalPeriod, startDate, endDate]
+          properties:
+            stableKey: { type: string }
+            fiscalYear: { type: string }
+            fiscalQuarter: { type: string }
+            fiscalPeriod: { type: string }
+            startDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', description: ISO calendar date }
+            endDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$', description: ISO calendar date }
         readableName: { type: string }
         requestedMinor: { $ref: "#/components/schemas/MinorMoney" }
         approvedMinor: { $ref: "#/components/schemas/MinorMoney" }

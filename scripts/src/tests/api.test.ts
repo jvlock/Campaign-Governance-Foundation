@@ -394,6 +394,53 @@ test("configured activities enforce conditional and MCP rules while execution co
     method: "POST", body: JSON.stringify({ name: "Must not version" }),
   });
   assert.equal(rejectedLegacyVersion.status, 400);
+
+  const publishExecutionResponse = await api(`/activities/${governedMcpActivity.id}/executions`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({ name: "Server-derived preview", configurationData: { intentCategory: "conversion" } }),
+  });
+  assert.equal(publishExecutionResponse.status, 201, await publishExecutionResponse.clone().text());
+  const publishExecution = await publishExecutionResponse.json() as any;
+  const approvedExecutionResponse = await api(`/executions/${publishExecution.executionKey}`, adminSid, {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: publishExecution.name,
+      status: "approved",
+      configurationData: { intentCategory: "conversion" },
+      rowVersion: publishExecution.rowVersion,
+    }),
+  });
+  assert.equal(approvedExecutionResponse.status, 200, await approvedExecutionResponse.clone().text());
+  const connectionResponse = await api("/delivery-platform-connections", adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      channelValueId: mcpChannel.id,
+      platformKey: `preview-${suffix}`,
+      displayName: "Publish preview test",
+      endpointUrl: "https://delivery.example.com/mcp",
+      isActive: true,
+    }),
+  });
+  assert.equal(connectionResponse.status, 201, await connectionResponse.clone().text());
+  const connection = await connectionResponse.json() as any;
+  const previewResponse = await api(`/executions/${publishExecution.executionKey}/publish-preview`, adminSid, {
+    method: "POST",
+    body: JSON.stringify({
+      platformConnectionId: connection.id,
+      campaignKey: crypto.randomUUID(),
+      deliveryStartDate: "1999-01-01",
+      productValueIds: [],
+      rawPrompt: "client field must not enter the server-derived payload",
+    }),
+  });
+  assert.equal(previewResponse.status, 200, await previewResponse.clone().text());
+  const preview = await previewResponse.json() as any;
+  assert.equal(preview.payload.activity.campaignKey, campaign.campaignKey);
+  assert.equal(preview.payload.activity.deliveryStartDate, activityBase.deliveryStartDate);
+  assert.equal(preview.payload.activity.deliveryEndDate, activityBase.deliveryEndDate);
+  assert.deepEqual(preview.payload.activity.productValueIds, [product.id]);
+  assert.deepEqual(preview.payload.activity.configuration, { intentCategory: "conversion" });
+  assert.equal(JSON.stringify(preview.payload).includes("client field must not enter"), false);
 });
 
 test("activity allocations reconcile on create/update and lock only touched fiscal periods", async () => {
@@ -777,6 +824,10 @@ test("campaign identity survives non-calendar multi-period budget planning with 
   assert.equal(periods.reduce((sum, period) => sum + BigInt(period.approvedMinor), 0n), 10001n);
   assert.equal(new Set(periods.map((period) => period.campaignKey)).size, 1);
   assert.equal(periods[0]!.campaignKey, campaign.campaignKey);
+  assert.deepEqual(periods.map((period) => period.fiscalPeriod), [
+    { stableKey: "FY30-P01", fiscalYear: "FY2030", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2030-02-01", endDate: "2030-03-31" },
+    { stableKey: "FY30-P02", fiscalYear: "FY2030", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2030-04-01", endDate: "2030-04-30" },
+  ]);
   const splitActivity = await api(`/activities/${activity.id}/period-allocations`, undefined, {
     method: "PUT",
     body: JSON.stringify({ method: "daily" }),
@@ -791,6 +842,7 @@ test("campaign identity survives non-calendar multi-period budget planning with 
   assert.equal(detailBody.costs.length, 1);
   assert.equal(detailBody.costs[0].authoritativeAmountMinor, "10001");
   assert.equal(detailBody.costs[0].dimensions[0].allocationBasisPoints, 10000);
+  assert.deepEqual(detailBody.planningPeriods.map((period: any) => period.fiscalPeriod), periods.map((period) => period.fiscalPeriod));
 
   const close = await api(`/planning-periods/${periods[0]!.id}/close`, undefined, {
     method: "POST",
@@ -863,6 +915,7 @@ test("evergreen planning uses review date and includes leap-day fiscal boundarie
       periods: [
         { stableKey: "FY32-P01", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2032-02-28", endDate: "2032-02-29" },
         { stableKey: "FY32-P02", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2032-03-01", endDate: "2032-03-31" },
+        { stableKey: "FY32-P03", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P03", startDate: "2032-04-01", endDate: "2032-04-30" },
       ],
     }),
   });
@@ -875,6 +928,7 @@ test("evergreen planning uses review date and includes leap-day fiscal boundarie
       campaignType: "nurture",
       relationshipType: "new",
       startDate: "2032-02-28",
+      endDate: "2032-04-30",
       isEvergreen: true,
       reviewDate: "2032-03-01",
     }),
@@ -905,6 +959,16 @@ test("evergreen planning uses review date and includes leap-day fiscal boundarie
   assert.equal(periods.length, 2);
   assert.equal(periods.reduce((sum, period) => sum + BigInt(period.approvedMinor), 0n), 3n);
   assert.ok(periods.some((period) => period.readableName.includes("FY2032 Q1")));
+  assert.deepEqual(periods.map((period) => period.fiscalPeriod), [
+    { stableKey: "FY32-P01", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P01", startDate: "2032-02-28", endDate: "2032-02-29" },
+    { stableKey: "FY32-P02", fiscalYear: "FY2032", fiscalQuarter: "Q1", fiscalPeriod: "P02", startDate: "2032-03-01", endDate: "2032-03-31" },
+  ]);
+  const reloaded = await api(`/campaigns/${campaign.campaignKey}`);
+  assert.equal(reloaded.status, 200, await reloaded.clone().text());
+  assert.deepEqual(
+    (await reloaded.json() as any).planningPeriods.map((period: any) => period.fiscalPeriod),
+    periods.map((period) => period.fiscalPeriod),
+  );
 });
 
 test.after(async () => {
