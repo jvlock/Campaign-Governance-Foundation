@@ -40,7 +40,7 @@ export default function Campaigns() {
             Campaign Registry
           </h1>
           <p className="text-muted-foreground text-sm max-w-xl">
-            Governed command center for enduring campaigns. Manage persistent identities, budgets, and audiences without spreadsheet ambiguity.
+            Governed command center for enduring campaigns. Manage consistent identities, audiences, naming, and tracking without spreadsheet ambiguity.
           </p>
         </div>
         <Link href="/create-campaign">

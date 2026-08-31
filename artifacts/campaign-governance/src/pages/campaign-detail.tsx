@@ -49,6 +49,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatMinorUnitsToCurrency, parseDecimalToMinorUnits, sumMinorUnits, subtractMinorUnits } from "@/lib/utils";
 
+const BUDGETING_VISIBLE = false;
+const CAMPAIGN_SUBMISSION_VISIBLE = false;
+const FINANCE_TERMS = /\b(budget|cost|fiscal|financial|allocation|spend|variance|forecast|committed|actual|funding)\b/i;
+
 export default function CampaignDetail() {
   const [, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id || "";
@@ -214,6 +218,9 @@ export default function CampaignDetail() {
     );
   }
 
+  const visibleIssues = campaign.issueSummary.filter((issue) => !FINANCE_TERMS.test(issue));
+  const visibleHistory = campaign.history?.filter((event) => !FINANCE_TERMS.test(`${event.action} ${event.reason || ""}`)) ?? [];
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500 h-full pb-10">
       <div className="flex flex-col gap-6 bg-card border rounded-xl p-6 shadow-sm">
@@ -252,7 +259,7 @@ export default function CampaignDetail() {
           </div>
           
           <div className="flex items-center gap-3 shrink-0">
-            {campaign.status === 'draft' && (
+            {CAMPAIGN_SUBMISSION_VISIBLE && campaign.status === 'draft' && (
               <Button 
                 onClick={handleSubmit} 
                 disabled={submitCampaign.isPending}
@@ -275,13 +282,15 @@ export default function CampaignDetail() {
             <Users className="w-4 h-4 mr-2 inline-block" />
             Audiences & Products
           </TabsTrigger>
-          <TabsTrigger value="budget" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 font-semibold text-muted-foreground data-[state=active]:text-foreground">
-            <Wallet className="w-4 h-4 mr-2 inline-block" />
-            Financial Plan
-          </TabsTrigger>
+          {BUDGETING_VISIBLE && (
+            <TabsTrigger value="budget" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 font-semibold text-muted-foreground data-[state=active]:text-foreground">
+              <Wallet className="w-4 h-4 mr-2 inline-block" />
+              Financial Plan
+            </TabsTrigger>
+          )}
           <TabsTrigger value="activities" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 font-semibold text-muted-foreground data-[state=active]:text-foreground">
             <Activity className="w-4 h-4 mr-2 inline-block" />
-            Execution & Costs
+            Activities & Executions
           </TabsTrigger>
           <TabsTrigger value="history" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 py-3 font-semibold text-muted-foreground data-[state=active]:text-foreground">
             <History className="w-4 h-4 mr-2 inline-block" />
@@ -307,19 +316,19 @@ export default function CampaignDetail() {
                 <Card className="border shadow-sm">
                   <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Readiness Assessment</CardTitle>
-                    <Badge variant="outline" className={campaign.issueSummary.length === 0 ? "border-emerald-500 text-emerald-600 bg-emerald-50" : "border-amber-500 text-amber-600 bg-amber-50"}>
-                      {campaign.issueSummary.length === 0 ? "Ready for Submission" : `${campaign.issueSummary.length} Blocking Issues`}
+                    <Badge variant="outline" className={visibleIssues.length === 0 ? "border-emerald-500 text-emerald-600 bg-emerald-50" : "border-amber-500 text-amber-600 bg-amber-50"}>
+                      {visibleIssues.length === 0 ? "Naming & Tracking Ready" : `${visibleIssues.length} Governance Issues`}
                     </Badge>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    {campaign.issueSummary.length === 0 ? (
+                    {visibleIssues.length === 0 ? (
                       <div className="flex items-center gap-3 text-emerald-700 bg-emerald-50/50 p-4 rounded-lg border border-emerald-200">
                         <CheckCircle2 className="w-5 h-5" />
-                        <span className="font-medium text-sm">All governance criteria met. Identity, budgets, and plans are valid.</span>
+                        <span className="font-medium text-sm">Campaign identity, naming context, and tracking setup are ready.</span>
                       </div>
                     ) : (
                       <ul className="space-y-3">
-                        {campaign.issueSummary.map((issue, idx) => (
+                        {visibleIssues.map((issue, idx) => (
                           <li key={idx} className="flex items-start gap-3 text-amber-800 bg-amber-50/50 p-3 rounded-lg border border-amber-200 text-sm font-medium">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                             <span>{issue}</span>
@@ -351,7 +360,7 @@ export default function CampaignDetail() {
                       </div>
                       <span className="font-bold">{campaign.products?.length || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2">
+                    {BUDGETING_VISIBLE && <div className="flex justify-between items-center py-2">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Wallet className="w-4 h-4" />
                         <span className="text-sm font-medium">Total Requested</span>
@@ -359,7 +368,7 @@ export default function CampaignDetail() {
                       <span className="font-bold text-primary">
                         ${formatMinorUnitsToCurrency(campaign.planningPeriods?.reduce((acc, p) => sumMinorUnits(acc, p.requestedMinor), '0') || '0')}
                       </span>
-                    </div>
+                    </div>}
                   </CardContent>
                 </Card>
               </div>
@@ -468,7 +477,7 @@ export default function CampaignDetail() {
             </div>
           </TabsContent>
 
-          <TabsContent value="budget" className="m-0 border-none p-0 outline-none">
+          {BUDGETING_VISIBLE && <TabsContent value="budget" className="m-0 border-none p-0 outline-none">
             <Card className="border shadow-sm">
               <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
                 <div>
@@ -521,7 +530,7 @@ export default function CampaignDetail() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent>}
 
           <TabsContent value="activities" className="m-0 border-none p-0 outline-none">
              <div className="flex flex-col gap-8">
@@ -542,7 +551,7 @@ export default function CampaignDetail() {
                  </CardContent>
                </Card>
 
-              <Card className="border shadow-sm flex flex-col w-full">
+              {BUDGETING_VISIBLE && <Card className="border shadow-sm flex flex-col w-full">
                 <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between shrink-0">
                   <div>
                     <CardTitle className="text-lg">Authoritative Costs</CardTitle>
@@ -588,7 +597,7 @@ export default function CampaignDetail() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </Card>}
              </div>
           </TabsContent>
 
@@ -596,16 +605,16 @@ export default function CampaignDetail() {
             <Card className="border shadow-sm flex flex-col max-h-[600px]">
               <CardHeader className="bg-muted/10 border-b shrink-0">
                 <CardTitle className="text-lg flex items-center gap-2"><FileText className="w-5 h-5 text-primary" /> Audit Log</CardTitle>
-                <CardDescription>Immutable record of governance and financial transitions</CardDescription>
+                <CardDescription>Immutable record of campaign governance and tracking transitions</CardDescription>
               </CardHeader>
               <ScrollArea className="flex-1">
                 <CardContent className="pt-6">
-                  {!campaign.history || campaign.history.length === 0 ? (
+                  {visibleHistory.length === 0 ? (
                     <EmptyState icon={<History className="w-8 h-8 text-muted-foreground" />} title="No audit history" description="Events will be recorded here automatically." />
                   ) : (
                     <div className="relative border-l-2 border-muted ml-4 space-y-8 pb-4">
-                      {campaign.history.map((event) => {
-                        const isFinancial = event.action.includes('budget') || event.action.includes('period') || event.action.includes('cost') || event.action.includes('activity');
+                      {visibleHistory.map((event) => {
+                        const isFinancial = false;
                         const snap = event.snapshot as Record<string, any> | undefined;
                         
                         return (

@@ -11,7 +11,6 @@ import Campaigns from '@/pages/campaigns';
 import CampaignDetail from '@/pages/campaign-detail';
 import Approvals from '@/pages/approvals';
 import Reporting from '@/pages/reporting';
-import Calendars from '@/pages/finance/calendars';
 import NotFound from '@/pages/not-found';
 
 import TaxonomyList from '@/pages/taxonomy/list';
@@ -55,9 +54,6 @@ function Router() {
           <Route path="/taxonomy/review-requests" component={TaxonomyReviewRequests} />
           <Route path="/taxonomy/new" component={TaxonomyDetail} />
           <Route path="/taxonomy/:id" component={TaxonomyDetail} />
-
-          {/* Finance Administration */}
-          <Route path="/finance/calendars" component={Calendars} />
 
           <Route path="/reporting" component={Reporting} />
           

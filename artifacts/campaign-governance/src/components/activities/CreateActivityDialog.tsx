@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,11 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } fr
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2, Link as LinkIcon, Lock, AlertCircle } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Plus, Loader2, Link as LinkIcon, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseDecimalToMinorUnits, formatMinorUnitsToCurrency } from "@/lib/utils";
-import { differenceInDays, parseISO, max, min, isValid } from "date-fns";
 
 export function CreateActivityDialog({ campaign }: { campaign: CampaignDetail }) {
   const [open, setOpen] = useState(false);
@@ -62,66 +59,6 @@ export function CreateActivityDialog({ campaign }: { campaign: CampaignDetail })
   const selectedConfigId = form.watch("configurationId");
   const selectedConfig = publishedConfigs.find(c => c.id === selectedConfigId);
   const answers = form.watch("configurationAnswers");
-  const deliveryStartDate = form.watch("deliveryStartDate");
-  const deliveryEndDate = form.watch("deliveryEndDate");
-  const authoritativeCostMinorStr = form.watch("authoritativeCostMinor");
-
-  // Preview the same integer-minor-unit, largest-remainder allocation used by the server.
-  const allocationPreview = useMemo(() => {
-    if (!deliveryStartDate || !deliveryEndDate || !authoritativeCostMinorStr) return null;
-    try {
-      const start = parseISO(deliveryStartDate);
-      const end = parseISO(deliveryEndDate);
-      if (!isValid(start) || !isValid(end) || end < start) return null;
-
-      const totalAmount = BigInt(parseDecimalToMinorUnits(authoritativeCostMinorStr));
-      if (totalAmount <= 0n) return null;
-
-      const periods = [...(campaign.planningPeriods || [])]
-        .sort((a, b) => a.fiscalPeriod.startDate.localeCompare(b.fiscalPeriod.startDate));
-      const overlaps = periods.map(p => {
-        const pStart = parseISO(p.fiscalPeriod.startDate);
-        const pEnd = parseISO(p.fiscalPeriod.endDate);
-        const overlapStart = max([start, pStart]);
-        const overlapEnd = min([end, pEnd]);
-
-        const days = overlapEnd >= overlapStart ? differenceInDays(overlapEnd, overlapStart) + 1 : 0;
-        return { period: p, days };
-      });
-
-      const touched = overlaps.filter(o => o.days > 0);
-      const totalDays = touched.reduce((sum, o) => sum + o.days, 0);
-      const expectedDays = differenceInDays(end, start) + 1;
-      if (totalDays === 0 || totalDays !== expectedDays) {
-        return { totalDays, expectedDays, allocations: [], hasCoverageGap: true };
-      }
-
-      const denominator = BigInt(totalDays);
-      const rows = touched.map((overlap, order) => {
-        const numerator = totalAmount * BigInt(overlap.days);
-        return {
-          ...overlap,
-          order,
-          amount: numerator / denominator,
-          remainder: numerator % denominator,
-        };
-      });
-      let remainder = totalAmount - rows.reduce((sum, row) => sum + row.amount, 0n);
-      const remainderOrder = [...rows].sort((a, b) =>
-        a.remainder === b.remainder ? a.order - b.order : a.remainder > b.remainder ? -1 : 1,
-      );
-      for (let index = 0; remainder > 0n; index += 1, remainder -= 1n) {
-        remainderOrder[index % remainderOrder.length]!.amount += 1n;
-      }
-      const allocations = rows.sort((a, b) => a.order - b.order)
-        .map(row => ({ period: row.period, amount: row.amount, days: row.days }));
-
-      return { totalDays, expectedDays, allocations, hasCoverageGap: false };
-    } catch {
-      return null;
-    }
-  }, [deliveryStartDate, deliveryEndDate, authoritativeCostMinorStr, campaign.planningPeriods]);
-
   const [seededConfigId, setSeededConfigId] = useState<string | null>(null);
 
   // Auto-fill inheritable fields when config changes
@@ -171,7 +108,7 @@ export function CreateActivityDialog({ campaign }: { campaign: CampaignDetail })
           name: values.name,
           deliveryStartDate: values.deliveryStartDate,
           deliveryEndDate: values.deliveryEndDate,
-          authoritativeCostMinor: parseDecimalToMinorUnits(values.authoritativeCostMinor),
+          authoritativeCostMinor: "0",
           currency: values.currency,
           configurationId: selectedConfig?.id,
           activityType: selectedConfig?.stableKey,
@@ -276,44 +213,6 @@ export function CreateActivityDialog({ campaign }: { campaign: CampaignDetail })
                       );
                     }} />
 
-                    <FormField control={form.control} name="authoritativeCostMinor" render={({field}) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Budget Allocation</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                             <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                             <Input {...field} className="pl-7 max-w-[50%]" />
-                          </div>
-                        </FormControl>
-                        {allocationPreview && allocationPreview.allocations.length > 0 && (
-                          <div className="mt-4 p-4 bg-muted/20 border rounded-md">
-                            <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                              <AlertCircle className="w-4 h-4" />
-                              <h4 className="text-sm font-semibold">Exact-Allocation Preview (Server-Authoritative on Save)</h4>
-                            </div>
-                            <div className="grid grid-cols-1 gap-2 mt-2">
-                              {allocationPreview.allocations.map(a => (
-                                <div key={a.period.id} className="flex justify-between items-center text-xs font-mono p-2 bg-background border rounded">
-                                  <span>{a.period.fiscalPeriod.stableKey} ({a.days} days)</span>
-                                   <span className="font-semibold text-primary">${formatMinorUnitsToCurrency(a.amount.toString())}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <FormDescription className="mt-2">
-                              Distributes the remainders deterministically in fiscal-period order using daily weighting based on {allocationPreview.totalDays} total active days.
-                            </FormDescription>
-                          </div>
-                        )}
-                        {allocationPreview && allocationPreview.hasCoverageGap && (
-                          <Alert variant="destructive" className="mt-2 py-2">
-                            <AlertTitle className="text-sm m-0">Incomplete fiscal coverage</AlertTitle>
-                            <AlertDescription className="text-xs">
-                              The activity spans {allocationPreview.expectedDays} days, but only {allocationPreview.totalDays} are covered by campaign planning periods. Adjust the dates or fiscal plan before saving.
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </FormItem>
-                    )} />
                     <FormField control={form.control} name="status" render={({field}) => (
                       <FormItem className="col-span-2 sm:col-span-1">
                         <FormLabel>Status</FormLabel>

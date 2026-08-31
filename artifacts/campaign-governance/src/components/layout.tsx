@@ -9,8 +9,7 @@ import {
   Plus,
   ShieldCheck,
   LogIn,
-  LogOut,
-  CalendarDays
+  LogOut
 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { cn } from "@/lib/utils";
@@ -29,7 +28,6 @@ const NAV_GROUPS = [
     title: "Governance",
     items: [
       { href: "/taxonomy", label: "Taxonomy", icon: Tags },
-      { href: "/finance/calendars", label: "Fiscal Calendars", icon: CalendarDays },
     ]
   },
   {

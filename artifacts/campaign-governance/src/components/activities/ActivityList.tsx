@@ -5,15 +5,13 @@ import {
   type CampaignDetail, 
   type CampaignActivityDetail,
   useUpdateCampaignActivity,
-  useAllocateActivityAcrossPeriods,
   getGetCampaignQueryKey
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronRight, Activity, Lock, Edit3, SplitSquareHorizontal } from "lucide-react";
-import { formatMinorUnitsToCurrency, parseDecimalToMinorUnits } from "@/lib/utils";
+import { ChevronDown, ChevronRight, Activity, Lock, Edit3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ActivityExecutions } from "./ActivityExecutions";
 
@@ -26,7 +24,7 @@ export function ActivityList({ campaign }: { campaign: CampaignDetail }) {
         </div>
         <h3 className="font-semibold text-lg text-foreground">No Activities Planned</h3>
         <p className="text-muted-foreground text-sm max-w-sm mt-2">
-          Create execution activities using published configurations to allocate budget and track lineage.
+          Create governed channel activities to apply naming standards and track execution lineage.
         </p>
       </div>
     );
@@ -42,7 +40,6 @@ export function ActivityList({ campaign }: { campaign: CampaignDetail }) {
             <th className="px-4 py-3">Name</th>
             <th className="px-4 py-3">Channel / Type</th>
             <th className="px-4 py-3">Delivery Dates</th>
-            <th className="px-4 py-3 text-right">Cost Alloc.</th>
             <th className="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
@@ -61,12 +58,7 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
   
   const [updateOpen, setUpdateOpen] = useState(false);
   const [name, setName] = useState(activity.name);
-  const [cost, setCost] = useState(activity.authoritativeCostMinor);
-  
-  const [allocateOpen, setAllocateOpen] = useState(false);
-
   const updateActivity = useUpdateCampaignActivity();
-  const allocateActivity = useAllocateActivityAcrossPeriods();
 
   const handleUpdate = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -77,7 +69,7 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
           name,
           deliveryStartDate: activity.deliveryStartDate,
           deliveryEndDate: activity.deliveryEndDate,
-          authoritativeCostMinor: parseDecimalToMinorUnits(cost.toString()),
+          authoritativeCostMinor: activity.authoritativeCostMinor,
           currency: activity.currency,
           productValueIds: activity.productValueIds || [],
           reason: "Manual update",
@@ -87,21 +79,6 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
       queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaign.campaignKey) });
       setUpdateOpen(false);
       toast({ title: "Activity updated" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const handleAllocate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await allocateActivity.mutateAsync({
-        activityId: activity.id,
-        data: { method: "daily" }
-      });
-      queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaign.campaignKey) });
-      setAllocateOpen(false);
-      toast({ title: "Activity allocated across periods" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -133,26 +110,8 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
         <td className="px-4 py-4 text-xs text-muted-foreground">
           {format(new Date(activity.deliveryStartDate), "MMM d")} - {format(new Date(activity.deliveryEndDate), "MMM d, yy")}
         </td>
-        <td className="px-4 py-4 text-right text-primary font-semibold">
-          ${formatMinorUnitsToCurrency(activity.authoritativeCostMinor)}
-        </td>
         <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Dialog open={allocateOpen} onOpenChange={setAllocateOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase font-bold tracking-wider px-2"><SplitSquareHorizontal className="w-3 h-3 mr-1" /> Allocate</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Allocate Activity</DialogTitle></DialogHeader>
-                <div className="py-4">
-                  <p className="text-sm text-muted-foreground">Distributes the cost across the active periods using daily weighting.</p>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAllocate} disabled={allocateActivity.isPending}>Confirm</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
             <Dialog open={updateOpen} onOpenChange={setUpdateOpen}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-7 w-7"><Edit3 className="h-3.5 w-3.5" /></Button>
@@ -163,10 +122,6 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
                   <div className="space-y-2">
                     <Label>Name</Label>
                     <Input value={name} onChange={e => setName(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Authoritative Cost</Label>
-                    <Input value={cost} onChange={e => setCost(e.target.value)} type="text" />
                   </div>
                 </div>
                 <DialogFooter>
@@ -180,7 +135,7 @@ function ActivityRow({ activity, campaign }: { activity: CampaignActivityDetail,
       
       {expanded && (
         <tr>
-          <td colSpan={7} className="p-0 border-b">
+          <td colSpan={6} className="p-0 border-b">
             <div className="bg-muted/5 p-6 border-l-4 border-l-primary/60 shadow-inner">
                <div className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-8">
                  

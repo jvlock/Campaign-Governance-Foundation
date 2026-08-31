@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
+const FINANCE_TERMS = /\b(budget|cost|fiscal|financial|allocation|spend|variance|forecast|committed|actual|funding)\b/i;
+
 export default function Dashboard() {
   const { data: health, isLoading: isLoadingHealth } = useHealthCheck();
   const { data: summary, isLoading: isLoadingSummary } = useGetFoundationSummary();
@@ -36,10 +38,10 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Foundation Readiness
+            Campaign Governance
           </h1>
           <p className="text-sm text-muted-foreground">
-            Governance control center and segment-led active values.
+            Naming, taxonomy, and campaign tracking control center.
           </p>
         </div>
         
@@ -175,7 +177,9 @@ export default function Dashboard() {
               </div>
             ) : summary ? (
               <div className="space-y-3">
-                {Object.entries(summary.readiness).map(([component, status]) => (
+                {Object.entries(summary.readiness)
+                  .filter(([component]) => !FINANCE_TERMS.test(component))
+                  .map(([component, status]) => (
                   <div key={component} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center gap-2">
                       {status === 'complete' ? (
@@ -216,9 +220,9 @@ export default function Dashboard() {
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
             </div>
-          ) : activities && activities.length > 0 ? (
+          ) : activities && activities.filter((activity) => !FINANCE_TERMS.test(`${activity.title} ${activity.detail} ${activity.kind}`)).length > 0 ? (
             <div className="relative border-l ml-3 pl-6 space-y-6">
-              {activities.map((activity) => (
+              {activities.filter((activity) => !FINANCE_TERMS.test(`${activity.title} ${activity.detail} ${activity.kind}`)).map((activity) => (
                 <div key={activity.id} className="relative">
                   <div className="absolute -left-[31px] flex h-4 w-4 items-center justify-center rounded-full bg-background border-2 border-primary" />
                   <div className="flex flex-col gap-1">

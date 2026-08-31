@@ -44,11 +44,12 @@ A greenfield, segment-led workspace for governing integrated Sales and Marketing
 - Referenced taxonomy values are retired or superseded, not deleted.
 - Audit and governance events are append-only.
 - Preserved-source imports stage real parsed candidates and structured conflicts; they never auto-activate values.
-- Campaign Registry, setup drafts, normalized plans, and fiscal budgeting are available through the API; live business integrations remain deferred.
+- Campaign Registry, setup drafts, normalized plans, and fiscal budgeting are available through the API; budgeting remains hidden in the frontend for now.
+- The current product focus is governed campaign naming and tracking. Do not expose budgeting, cost, fiscal-calendar, or allocation controls unless that scope is explicitly reactivated.
 
 ## Product
 
-The current backend phase provides Taxonomy Administration, Campaign Registry and guided-setup persistence, normalized audience/product planning, and multi-year fiscal budgeting. The existing frontend remains taxonomy-focused. Reporting and live integrations are deferred.
+The product currently focuses on Taxonomy Administration, governed Campaign Registry naming, audience/product context, activities, executions, and tracking. Finance capabilities remain preserved in the backend but hidden from the frontend. Reporting and live integrations are deferred.
 
 ## User preferences
 
