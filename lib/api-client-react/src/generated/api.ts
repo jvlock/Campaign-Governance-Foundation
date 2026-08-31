@@ -31,7 +31,7 @@ import type {
   ActivityTypeConfigurationInput,
   ActivityTypeConfigurationPublish,
   AudiencePlanInput,
-  AudienceSelection,
+  AudiencePlanResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   Campaign,
@@ -47,6 +47,7 @@ import type {
   CampaignInput,
   CampaignPlanningPeriod,
   CampaignReadiness,
+  CampaignReportingDimensions,
   CampaignSubmissionInput,
   CampaignUpdate,
   ConflictResolutionInput,
@@ -85,8 +86,8 @@ import type {
   PeriodReopenInput,
   PlanningPeriodGenerationInput,
   PlanningPeriodUpdate,
-  ProductAssociation,
   ProductPlanInput,
+  ProductPlanResponse,
   TaxonomyAccess,
   TaxonomyAssociation,
   TaxonomyAssociationInput,
@@ -2086,6 +2087,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateCampaignMutationOptions(options));
     }
 
+export const getGetCampaignReportingDimensionsUrl = () => {
+
+
+
+
+  return `/api/campaigns/reporting/dimensions`
+}
+
+export const getCampaignReportingDimensions = async ( options?: Parameters<typeof customFetch>[1]): Promise<CampaignReportingDimensions> => {
+
+  return customFetch<CampaignReportingDimensions>(getGetCampaignReportingDimensionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCampaignReportingDimensionsQueryKey = () => {
+    return [
+    `/api/campaigns/reporting/dimensions`
+    ] as const;
+    }
+
+
+export const getGetCampaignReportingDimensionsQueryOptions = <TData = Awaited<ReturnType<typeof getCampaignReportingDimensions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCampaignReportingDimensions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCampaignReportingDimensionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCampaignReportingDimensions>>> = ({ signal }) => getCampaignReportingDimensions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCampaignReportingDimensions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCampaignReportingDimensionsQueryResult = NonNullable<Awaited<ReturnType<typeof getCampaignReportingDimensions>>>
+export type GetCampaignReportingDimensionsQueryError = ErrorType<unknown>
+
+
+
+export function useGetCampaignReportingDimensions<TData = Awaited<ReturnType<typeof getCampaignReportingDimensions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCampaignReportingDimensions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCampaignReportingDimensionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListActivityTypeConfigurationsUrl = (params?: ListActivityTypeConfigurationsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2852,9 +2924,9 @@ export const getReplaceCampaignAudiencesUrl = (campaignKey: string,) => {
 }
 
 export const replaceCampaignAudiences = async (campaignKey: string,
-    audiencePlanInput: AudiencePlanInput, options?: Parameters<typeof customFetch>[1]): Promise<AudienceSelection[]> => {
+    audiencePlanInput: AudiencePlanInput, options?: Parameters<typeof customFetch>[1]): Promise<AudiencePlanResponse> => {
 
-  return customFetch<AudienceSelection[]>(getReplaceCampaignAudiencesUrl(campaignKey),
+  return customFetch<AudiencePlanResponse>(getReplaceCampaignAudiencesUrl(campaignKey),
   {
     ...options,
     method: 'PUT',
@@ -2918,9 +2990,9 @@ export const getReplaceCampaignProductsUrl = (campaignKey: string,) => {
 }
 
 export const replaceCampaignProducts = async (campaignKey: string,
-    productPlanInput: ProductPlanInput, options?: Parameters<typeof customFetch>[1]): Promise<ProductAssociation[]> => {
+    productPlanInput: ProductPlanInput, options?: Parameters<typeof customFetch>[1]): Promise<ProductPlanResponse> => {
 
-  return customFetch<ProductAssociation[]>(getReplaceCampaignProductsUrl(campaignKey),
+  return customFetch<ProductPlanResponse>(getReplaceCampaignProductsUrl(campaignKey),
   {
     ...options,
     method: 'PUT',

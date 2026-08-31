@@ -8,6 +8,7 @@
 import type { AudienceSelection } from './audienceSelection';
 import type { Campaign } from './campaign';
 import type { CampaignActivityDetail } from './campaignActivityDetail';
+import type { CampaignCohortTreatment } from './campaignCohortTreatment';
 import type { CampaignCostDetail } from './campaignCostDetail';
 import type { CampaignHistoryEvent } from './campaignHistoryEvent';
 import type { CampaignPlanningPeriod } from './campaignPlanningPeriod';
@@ -16,6 +17,7 @@ import type { ProductAssociation } from './productAssociation';
 export type CampaignDetail = Campaign & {
   audiences: AudienceSelection[];
   products: ProductAssociation[];
+  cohortTreatments: CampaignCohortTreatment[];
   activities: CampaignActivityDetail[];
   costs: CampaignCostDetail[];
   planningPeriods: CampaignPlanningPeriod[];

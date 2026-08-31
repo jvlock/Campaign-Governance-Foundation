@@ -8,5 +8,7 @@
 import type { ProductAssociationInput } from './productAssociationInput';
 
 export interface ProductPlanInput {
+  /** @minimum 1 */
+  rowVersion: number;
   associations: ProductAssociationInput[];
 }

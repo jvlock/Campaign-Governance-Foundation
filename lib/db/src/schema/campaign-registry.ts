@@ -66,6 +66,11 @@ export const campaignsTable = pgTable("campaigns", {
 }, (table) => [
   index("campaigns_status_dates_idx").on(table.status, table.startDate, table.endDate),
   index("campaigns_parent_idx").on(table.parentCampaignKey),
+  uniqueIndex("campaign_normalized_period_type_unique").on(
+    sql`regexp_replace(lower(trim(${table.name})), '[^a-z0-9]+', ' ', 'g')`,
+    sql`coalesce(${table.startDate}, DATE '0001-01-01')`,
+    table.campaignType,
+  ),
 ]);
 
 export const campaignHistoryTable = pgTable("campaign_history", {

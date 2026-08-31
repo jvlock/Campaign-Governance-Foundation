@@ -42,6 +42,20 @@ Activities preserve delivery dates and an optional accounting date. Cross-period
 
 ## Governed taxonomy model
 
+Campaign setup stores all audience dimensions as independent selections. Unresolved catch-all labels create linked taxonomy review requests; account-size selections snapshot the current segment-specific rule version, and messaging cohorts snapshot an exact treatment from the authoritative `messaging_cohort_versions` table. Products are unique per campaign and carry one explicit role. Campaign reporting intentionally returns authoritative costs independently from audience and product rows to prevent multiplication.
+
+Submission is the atomic finalization boundary. Audience and product replacement transactions first lock the campaign row; submission takes the same row lock, locks both input sets, recomputes readiness from that serialized state, and conditionally advances the observed draft `rowVersion`. Thus a replacement either commits before readiness is evaluated or waits and is rejected after submission—there is no interleaving window. Product plans require exactly one primary product when non-empty, while a partial unique index independently enforces at most one.
+
+Exact account-size rules and cohort treatments are durable governance assignments, not suggestions to be silently upgraded. Under the campaign row lock, PATCH validates persisted rule/treatment IDs, versions, basis, segment/tier, full campaign date interval, and governed channels against the proposed campaign state. Ineligible changes return a conflict directing the user back to Cohorts & sizing. Submit runs the same invariant against the locked draft, preventing stale assignments from crossing the atomic finalization boundary.
+
+Audience and product plan replacements participate in campaign optimistic concurrency. Each request carries the current campaign `rowVersion`; after taking the campaign lock, the API rejects stale versions, replaces the plan, increments the campaign version in the same transaction, and returns the new version with the persisted rows. Guided setup hands that version from PATCH to audience replacement to product replacement and finally to submit, while skipping plan writes on unrelated steps.
+
+Submitted and approved campaign detail is available to any authenticated user; draft detail and every mutation remain owner/administrator scoped. Readiness remains owner/administrator scoped because it exposes mutable draft validation and probable-duplicate diagnostics before publication. One shared campaign policy is used by campaign, finance, activity, and execution routes. Indirect cost, planning-period, activity, and execution identifiers resolve to their campaign before authorization, and copy operations authorize both source and target. Fiscal-calendar administration and execution approval/publication remain administrator-only.
+
+Creating a related/copy campaign or assigning an initial relationship source requires mutate-level authority over the parent or copied source, regardless of whether that source is draft or submitted. Source authorization precedes relationship validation and inheritance reads, preventing broadly visible submitted campaigns from becoming planning-data exfiltration sources.
+
+Relationship and copy sources must be live, non-self, and acyclic. The first source assignment atomically inherits audience and product provenance; copies additionally preserve exact cohort-treatment associations. Source identity and relationship mode are immutable after inheritance.
+
 Taxonomy category metadata is stored in the database, so adding categories does not require adding page-level arrays. Governed values have:
 
 - an immutable `stableKey` independent of their mutable display name;

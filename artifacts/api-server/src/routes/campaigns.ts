@@ -11,6 +11,7 @@ import {
   GetCampaignParams,
   GetCampaignReadinessParams,
   GetCampaignReadinessResponse,
+  GetCampaignReportingDimensionsResponse,
   GetCampaignResponse,
   ListCampaignsQueryParams,
   ListCampaignsResponse,
@@ -43,7 +44,10 @@ import {
   campaignPlanningPeriodsTable,
   fiscalPeriodsTable,
   campaignProductAssociationsTable,
+  campaignCohortTreatmentsTable,
   campaignsTable,
+  accountSizeRulesTable,
+  messagingCohortVersionsTable,
   budgetHistoryTable,
   db,
   governedValuesTable,
@@ -51,10 +55,48 @@ import {
 } from "@workspace/db";
 import { activityAllocation, containsRawPrompt, setupIssues } from "../lib/campaign-domain";
 import { configurationResponse, executionResponse, isProtectedMcpConfiguration } from "./channel-activities";
+import { chooseCohortTreatment } from "../lib/campaign-cohort";
+import { isCampaignAdministrator, requireCampaignAccess } from "../lib/campaign-authorization";
+import { validatePersistedGovernanceAssignments } from "../lib/campaign-governance-invariants";
+import { nextCampaignPlanVersion } from "../lib/campaign-governance-validity";
 
 const router: IRouter = Router();
 router.use(requireMutationAuth);
+const CAMPAIGN_TYPES = new Set(["integrated", "activation", "nurture", "event", "research_content", "paid_media", "sales_cadence", "client_expansion", "newsletter", "in_app", "approved_other"]);
+const isUniqueViolation = (error: unknown) => (error as { code?: string })?.code === "23505";
 
+const DIMENSION_CATEGORIES: Record<string, string> = {
+  segment_family: "segment", subsegment: "subsegment", account_size_tier: "account_size_tier",
+  account_priority: "account_priority_tier", relationship: "relationship", buying_group_function: "buying_group_function",
+  persona: "persona", seniority: "seniority_level", messaging_cohort: "messaging_cohort",
+  behavioral_cohort: "behavioral_cohort", audience_origin: "audience_origin", region: "region",
+  country: "country", language: "language", journey_stage: "journey_stage",
+};
+
+const requireCampaignOwner = (req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], campaign: typeof campaignsTable.$inferSelect) =>
+  requireCampaignAccess(req, res, campaign, "mutate");
+const requireCampaignView = (req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], campaign: typeof campaignsTable.$inferSelect) =>
+  requireCampaignAccess(req, res, campaign, "view");
+
+async function validateRelationshipSource(
+  source: typeof campaignsTable.$inferSelect | undefined,
+  targetKey?: string,
+): Promise<string | null> {
+  if (!source) return null;
+  if (source.status === "archived") return "Archived campaigns cannot be relationship or copy sources";
+  if (targetKey && source.campaignKey === targetKey) return "A campaign cannot inherit from itself";
+  const visited = new Set<string>();
+  let cursor: typeof campaignsTable.$inferSelect | undefined = source;
+  while (cursor) {
+    if (targetKey && cursor.campaignKey === targetKey) return "Campaign relationships cannot contain cycles";
+    if (visited.has(cursor.campaignKey)) return "The selected source already contains a relationship cycle";
+    visited.add(cursor.campaignKey);
+    const parentKey = cursor.parentCampaignKey ?? cursor.copiedFromCampaignKey;
+    if (!parentKey) break;
+    [cursor] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, parentKey));
+  }
+  return null;
+}
 
 function dateString(value: Date | null | undefined): string | null | undefined {
   return value == null ? value : value.toISOString().slice(0, 10);
@@ -81,9 +123,11 @@ async function readiness(campaign: typeof campaignsTable.$inferSelect) {
     issues.push("One primary segment is required");
   }
   if (!audiences.some((item) => item.dimension === "persona")) issues.push("At least one meaningful persona is required");
+  if (products.length && products.filter((item) => item.isPrimary).length !== 1) issues.push("Exactly one campaign product must be primary");
   const probableDuplicates = await db.select().from(campaignsTable).where(and(
-    ilike(campaignsTable.name, campaign.name),
+    sql`regexp_replace(lower(trim(${campaignsTable.name})), '[^a-z0-9]+', ' ', 'g') = regexp_replace(lower(trim(${campaign.name})), '[^a-z0-9]+', ' ', 'g')`,
     eq(campaignsTable.campaignType, campaign.campaignType),
+    sql`coalesce(${campaignsTable.startDate}, date '0001-01-01') = coalesce(${campaign.startDate}, date '0001-01-01')`,
   ));
   return {
     ready: issues.length === 0,
@@ -93,10 +137,14 @@ async function readiness(campaign: typeof campaignsTable.$inferSelect) {
 }
 
 router.get("/campaigns", async (req, res): Promise<void> => {
+  if (process.env.NODE_ENV === "production" && !req.user?.id) { res.status(401).json({ error: "Authentication required" }); return; }
   const actorId = getAuditActor(req);
   const parsed = ListCampaignsQueryParams.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const filters = [or(eq(campaignsTable.status, "draft"), eq(campaignsTable.status, "submitted"), eq(campaignsTable.status, "approved"))!];
+  if (!await isCampaignAdministrator(actorId)) {
+    filters.push(or(sql`${campaignsTable.status} <> 'draft'`, eq(campaignsTable.createdBy, actorId))!);
+  }
   if (parsed.data.status) filters.push(eq(campaignsTable.status, parsed.data.status));
   if (parsed.data.search) {
     const term = `%${parsed.data.search.replace(/[%_]/g, "\\$&")}%`;
@@ -110,15 +158,27 @@ router.post("/campaigns", async (req, res): Promise<void> => {
   const actorId = getAuditActor(req);
   const body = CreateCampaignBody.safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  if (!CAMPAIGN_TYPES.has(body.data.campaignType)) { res.status(400).json({ error: "Unsupported campaign type" }); return; }
   if (body.data.relationshipType === "new" && (body.data.parentCampaignKey || body.data.copiedFromCampaignKey)) {
     res.status(400).json({ error: "A new campaign cannot have an inherited or copied source" }); return;
   }
   const sourceKey = body.data.relationshipType === "copy" ? body.data.copiedFromCampaignKey : body.data.parentCampaignKey;
+  if (body.data.relationshipType !== "new" && !sourceKey) { res.status(400).json({ error: "Related and copied campaigns require a source" }); return; }
   const [source] = sourceKey
     ? await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, sourceKey))
     : [undefined];
   if (sourceKey && !source) { res.status(400).json({ error: "Related campaign does not exist" }); return; }
-  const created = await db.transaction(async (tx) => {
+  if (source && !await requireCampaignOwner(req, res, source)) return;
+  const sourceError = await validateRelationshipSource(source);
+  if (sourceError) { res.status(400).json({ error: sourceError }); return; }
+  const normalizedDuplicate = await db.select({ campaignKey: campaignsTable.campaignKey }).from(campaignsTable).where(and(
+    sql`regexp_replace(lower(trim(${campaignsTable.name})), '[^a-z0-9]+', ' ', 'g') = regexp_replace(lower(trim(${body.data.name})), '[^a-z0-9]+', ' ', 'g')`,
+    eq(campaignsTable.campaignType, body.data.campaignType),
+    sql`coalesce(${campaignsTable.startDate}, date '0001-01-01') = coalesce(${dateString(body.data.startDate) ?? null}::date, date '0001-01-01')`,
+  )).limit(1);
+  if (normalizedDuplicate.length) { res.status(409).json({ error: "A campaign with the same normalized name, period, and type already exists" }); return; }
+  try {
+    const created = await db.transaction(async (tx) => {
     const [row] = await tx.insert(campaignsTable).values({
       ...body.data,
       startDate: dateString(body.data.startDate),
@@ -139,25 +199,76 @@ router.post("/campaigns", async (req, res): Promise<void> => {
     if (source) {
       const inheritedAudience = await tx.select().from(campaignAudienceSelectionsTable)
         .where(eq(campaignAudienceSelectionsTable.campaignKey, source.campaignKey));
-      if (inheritedAudience.length) await tx.insert(campaignAudienceSelectionsTable).values(inheritedAudience.map(({ id, campaignKey, createdAt, ...item }) => ({ ...item, campaignKey: row.campaignKey })));
+      if (inheritedAudience.length) await tx.insert(campaignAudienceSelectionsTable).values(inheritedAudience.map(({ id, campaignKey, createdAt, ...item }) => ({
+        ...item, campaignKey: row.campaignKey, provenance: "inherited", inheritedFromCampaignKey: source.campaignKey,
+      })));
       const inheritedProducts = await tx.select().from(campaignProductAssociationsTable)
         .where(eq(campaignProductAssociationsTable.campaignKey, source.campaignKey));
-      if (inheritedProducts.length) await tx.insert(campaignProductAssociationsTable).values(inheritedProducts.map(({ id, campaignKey, createdAt, ...item }) => ({ ...item, campaignKey: row.campaignKey })));
+      if (inheritedProducts.length) await tx.insert(campaignProductAssociationsTable).values(inheritedProducts.map(({ id, campaignKey, createdAt, ...item }) => ({
+        ...item, campaignKey: row.campaignKey, provenance: "inherited", inheritedFromCampaignKey: source.campaignKey,
+      })));
+      if (body.data.relationshipType === "copy") {
+        const inheritedCohorts = await tx.select().from(campaignCohortTreatmentsTable)
+          .where(eq(campaignCohortTreatmentsTable.campaignKey, source.campaignKey));
+        if (inheritedCohorts.length) await tx.insert(campaignCohortTreatmentsTable).values(inheritedCohorts.map(({ campaignKey, createdAt, ...item }) => ({
+          ...item, campaignKey: row.campaignKey,
+        })));
+      }
     }
     return row;
   });
-  res.status(201).json(CreateCampaignResponse.parse(campaignResponse(created)));
+    res.status(201).json(CreateCampaignResponse.parse(campaignResponse(created)));
+  } catch (error) {
+    if (isUniqueViolation(error)) { res.status(409).json({ error: "A campaign with the same normalized name, period, and type already exists" }); return; }
+    throw error;
+  }
+});
+
+router.get("/campaigns/reporting/dimensions", async (req, res): Promise<void> => {
+  if (process.env.NODE_ENV === "production" && !req.user?.id) { res.status(401).json({ error: "Authentication required" }); return; }
+  const actorId = getAuditActor(req);
+  const administrator = await isCampaignAdministrator(actorId);
+  const visible = await db.select().from(campaignsTable).where(administrator
+    ? sql`${campaignsTable.status} <> 'archived'`
+    : or(sql`${campaignsTable.status} <> 'draft'`, eq(campaignsTable.createdBy, actorId)));
+  const campaignKeys = visible.map((campaign) => campaign.campaignKey);
+  if (!campaignKeys.length) {
+    res.json(GetCampaignReportingDimensionsResponse.parse({ campaignCount: 0, audience: [], products: [], cohorts: [], authoritativeCosts: [], warningCount: 0, unresolvedCount: 0 }));
+    return;
+  }
+  const [audience, products, cohorts, costs] = await Promise.all([
+    db.select().from(campaignAudienceSelectionsTable).where(inArray(campaignAudienceSelectionsTable.campaignKey, campaignKeys)),
+    db.select().from(campaignProductAssociationsTable).where(inArray(campaignProductAssociationsTable.campaignKey, campaignKeys)),
+    db.select().from(campaignCohortTreatmentsTable).where(inArray(campaignCohortTreatmentsTable.campaignKey, campaignKeys)),
+    db.select().from(campaignCostsTable).where(inArray(campaignCostsTable.campaignKey, campaignKeys)),
+  ]);
+  res.json(GetCampaignReportingDimensionsResponse.parse({
+    campaignCount: visible.length,
+    audience,
+    products,
+    cohorts,
+    authoritativeCosts: costs.map((cost) => ({
+      campaignKey: cost.campaignKey, costId: cost.id, amountMinor: cost.authoritativeAmountMinor, currency: cost.currency,
+    })),
+    warningCount: audience.reduce((count, item) => count + item.warningCodes.length, 0),
+    unresolvedCount: audience.filter((item) => item.resolutionStatus === "pending_review").length,
+  }));
 });
 
 router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
-  const actorId = getAuditActor(req);
   const params = GetCampaignParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
-  const [audiences, products, activities, costs, periods, history, budgetHistory] = await Promise.all([
+  if (!await requireCampaignView(req, res, campaign)) return;
+  const [audiences, products, cohorts, activities, costs, periods, history, budgetHistory] = await Promise.all([
     db.select().from(campaignAudienceSelectionsTable).where(eq(campaignAudienceSelectionsTable.campaignKey, campaign.campaignKey)),
     db.select().from(campaignProductAssociationsTable).where(eq(campaignProductAssociationsTable.campaignKey, campaign.campaignKey)),
+    db.select({
+      governedValueId: campaignCohortTreatmentsTable.governedValueId,
+      treatmentId: campaignCohortTreatmentsTable.treatmentId,
+      treatmentVersion: campaignCohortTreatmentsTable.treatmentVersion,
+    }).from(campaignCohortTreatmentsTable).where(eq(campaignCohortTreatmentsTable.campaignKey, campaign.campaignKey)),
     db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.campaignKey, campaign.campaignKey)),
     db.select().from(campaignCostsTable).where(eq(campaignCostsTable.campaignKey, campaign.campaignKey)),
     db.select().from(campaignPlanningPeriodsTable).where(eq(campaignPlanningPeriodsTable.campaignKey, campaign.campaignKey)),
@@ -191,6 +302,7 @@ router.get("/campaigns/:campaignKey", async (req, res): Promise<void> => {
     ...campaignResponse(campaign),
     audiences: audiences.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
     products: products.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
+    cohortTreatments: cohorts,
     activities: activities.map((item) => activityResponse(
       item,
       activityProducts.filter((association) => association.activityId === item.id).map((association) => association.productValueId),
@@ -235,8 +347,45 @@ router.patch("/campaigns/:campaignKey", async (req, res): Promise<void> => {
   const params = UpdateCampaignParams.safeParse(req.params);
   const body = UpdateCampaignBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid campaign update" }); return; }
+  const [existing] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
+  if (!existing) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!await requireCampaignOwner(req, res, existing)) return;
   const { rowVersion, reason, ...values } = body.data;
-  const updated = await db.transaction(async (tx) => {
+  if (!CAMPAIGN_TYPES.has(values.campaignType)) { res.status(400).json({ error: "Unsupported campaign type" }); return; }
+  const sourceKey = values.relationshipType === "copy" ? values.copiedFromCampaignKey : values.parentCampaignKey;
+  if (values.relationshipType !== "new" && !sourceKey) { res.status(400).json({ error: "Related and copied campaigns require a source" }); return; }
+  const existingSourceKey = existing.copiedFromCampaignKey ?? existing.parentCampaignKey;
+  if (existingSourceKey && (sourceKey !== existingSourceKey || values.relationshipType !== existing.relationshipType)) {
+    res.status(409).json({ error: "A campaign source cannot be changed or removed after inheritance" }); return;
+  }
+  const [source] = sourceKey
+    ? await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, sourceKey))
+    : [undefined];
+  if (sourceKey && !source) { res.status(400).json({ error: "Related campaign does not exist" }); return; }
+  if (source && !existingSourceKey && !await requireCampaignOwner(req, res, source)) return;
+  const sourceError = await validateRelationshipSource(source, existing.campaignKey);
+  if (sourceError) { res.status(400).json({ error: sourceError }); return; }
+  const shouldInherit = Boolean(source && !existing.parentCampaignKey && !existing.copiedFromCampaignKey);
+  const normalizedDuplicate = await db.select({ campaignKey: campaignsTable.campaignKey }).from(campaignsTable).where(and(
+    sql`${campaignsTable.campaignKey} <> ${existing.campaignKey}`,
+    sql`regexp_replace(lower(trim(${campaignsTable.name})), '[^a-z0-9]+', ' ', 'g') = regexp_replace(lower(trim(${values.name})), '[^a-z0-9]+', ' ', 'g')`,
+    eq(campaignsTable.campaignType, values.campaignType),
+    sql`coalesce(${campaignsTable.startDate}, date '0001-01-01') = coalesce(${dateString(values.startDate) ?? null}::date, date '0001-01-01')`,
+  )).limit(1);
+  if (normalizedDuplicate.length) { res.status(409).json({ error: "A campaign with the same normalized name, period, and type already exists" }); return; }
+  try {
+    const outcome = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(campaignsTable)
+      .where(eq(campaignsTable.campaignKey, params.data.campaignKey)).for("update");
+    if (!locked || locked.status !== "draft" || locked.rowVersion !== rowVersion) return { row: null, governanceIssues: [] };
+    const proposed = {
+      ...locked,
+      ...values,
+      startDate: dateString(values.startDate) ?? null,
+      endDate: dateString(values.endDate) ?? null,
+    };
+    const governanceIssues = await validatePersistedGovernanceAssignments(tx, proposed);
+    if (governanceIssues.length) return { row: null, governanceIssues };
     const [row] = await tx.update(campaignsTable).set({
       ...values, rowVersion: rowVersion + 1, updatedBy: actorId, updatedAt: new Date(),
       startDate: dateString(values.startDate),
@@ -247,17 +396,46 @@ router.patch("/campaigns/:campaignKey", async (req, res): Promise<void> => {
       eq(campaignsTable.status, "draft"),
       eq(campaignsTable.rowVersion, rowVersion),
     )).returning();
+    if (row && source && shouldInherit) {
+      const inheritedAudience = await tx.select().from(campaignAudienceSelectionsTable)
+        .where(eq(campaignAudienceSelectionsTable.campaignKey, source.campaignKey));
+      if (inheritedAudience.length) await tx.insert(campaignAudienceSelectionsTable).values(inheritedAudience.map(({ id, campaignKey, createdAt, ...item }) => ({
+        ...item, campaignKey: row.campaignKey, provenance: "inherited", inheritedFromCampaignKey: source.campaignKey,
+      }))).onConflictDoNothing();
+      const inheritedProducts = await tx.select().from(campaignProductAssociationsTable)
+        .where(eq(campaignProductAssociationsTable.campaignKey, source.campaignKey));
+      if (inheritedProducts.length) await tx.insert(campaignProductAssociationsTable).values(inheritedProducts.map(({ id, campaignKey, createdAt, ...item }) => ({
+        ...item, campaignKey: row.campaignKey, provenance: "inherited", inheritedFromCampaignKey: source.campaignKey,
+      }))).onConflictDoNothing();
+      if (values.relationshipType === "copy") {
+        const inheritedCohorts = await tx.select().from(campaignCohortTreatmentsTable)
+          .where(eq(campaignCohortTreatmentsTable.campaignKey, source.campaignKey));
+        if (inheritedCohorts.length) await tx.insert(campaignCohortTreatmentsTable).values(inheritedCohorts.map(({ campaignKey, createdAt, ...item }) => ({
+          ...item, campaignKey: row.campaignKey,
+        }))).onConflictDoNothing();
+      }
+    }
     if (row) await tx.insert(campaignHistoryTable).values({ campaignKey: row.campaignKey, action: "draft_updated", actorId, reason, snapshot: row });
-    return row;
+    return { row, governanceIssues: [] };
   });
-  if (!updated) { res.status(409).json({ error: "Only the current version of a draft may be updated" }); return; }
-  res.json(UpdateCampaignResponse.parse(campaignResponse(updated)));
+    if (outcome.governanceIssues.length) {
+      res.status(409).json({ error: `Revisit Cohorts & sizing: ${outcome.governanceIssues.join("; ")}` }); return;
+    }
+    if (!outcome.row) { res.status(409).json({ error: "Only the current version of a draft may be updated" }); return; }
+    res.json(UpdateCampaignResponse.parse(campaignResponse(outcome.row)));
+  } catch (error) {
+    if (isUniqueViolation(error)) { res.status(409).json({ error: "A campaign with the same normalized name, period, and type already exists" }); return; }
+    throw error;
+  }
 });
 
 router.delete("/campaigns/:campaignKey", async (req, res): Promise<void> => {
   const actorId = getAuditActor(req);
   const params = ArchiveCampaignParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid campaign key" }); return; }
+  const [existing] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
+  if (!existing) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!await requireCampaignOwner(req, res, existing)) return;
   const [row] = await db.update(campaignsTable).set({ status: "archived", updatedBy: actorId, updatedAt: new Date() })
     .where(and(eq(campaignsTable.campaignKey, params.data.campaignKey), eq(campaignsTable.status, "draft"))).returning();
   if (!row) { res.status(409).json({ error: "Only drafts may be archived" }); return; }
@@ -271,6 +449,7 @@ router.get("/campaigns/:campaignKey/readiness", async (req, res): Promise<void> 
   if (!params.success) { res.status(400).json({ error: "Invalid campaign key" }); return; }
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!await requireCampaignOwner(req, res, campaign)) return;
   res.json(GetCampaignReadinessResponse.parse(await readiness(campaign)));
 });
 
@@ -281,14 +460,42 @@ router.post("/campaigns/:campaignKey/submit", async (req, res): Promise<void> =>
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid submission" }); return; }
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
-  const result = await readiness(campaign);
-  if (!result.ready) { res.status(409).json(GetCampaignReadinessResponse.parse(result)); return; }
-  const [updated] = await db.update(campaignsTable).set({
-    status: "submitted", submittedAt: new Date(), issueSummary: [], rowVersion: campaign.rowVersion + 1, updatedAt: new Date(), updatedBy: actorId,
-  }).where(and(eq(campaignsTable.campaignKey, campaign.campaignKey), eq(campaignsTable.status, "draft"))).returning();
-  if (!updated) { res.status(409).json({ error: "Campaign is no longer a draft" }); return; }
-  await db.insert(campaignHistoryTable).values({ campaignKey: updated.campaignKey, action: "submitted", actorId, reason: body.data.reason, snapshot: updated });
-  res.json(SubmitCampaignResponse.parse(campaignResponse(updated)));
+  if (!await requireCampaignOwner(req, res, campaign)) return;
+  const outcome = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(campaignsTable)
+      .where(eq(campaignsTable.campaignKey, campaign.campaignKey)).for("update");
+    if (!locked || locked.status !== "draft" || locked.rowVersion !== body.data.rowVersion) return { conflict: "Campaign draft changed; save and review the latest version before submitting" } as const;
+    const governanceIssues = await validatePersistedGovernanceAssignments(tx, locked);
+    if (governanceIssues.length) return { conflict: `Revisit Cohorts & sizing: ${governanceIssues.join("; ")}` } as const;
+    const audiences = await tx.select().from(campaignAudienceSelectionsTable)
+      .where(eq(campaignAudienceSelectionsTable.campaignKey, locked.campaignKey)).for("update");
+    const products = await tx.select().from(campaignProductAssociationsTable)
+      .where(eq(campaignProductAssociationsTable.campaignKey, locked.campaignKey)).for("update");
+    const issues = setupIssues({ ...locked, audienceCount: audiences.length, productCount: products.length });
+    if (!audiences.some((item) => item.dimension === "segment_family" && item.isPrimary)) issues.push("One primary segment is required");
+    if (!audiences.some((item) => item.dimension === "persona")) issues.push("At least one meaningful persona is required");
+    if (products.length && products.filter((item) => item.isPrimary).length !== 1) issues.push("Exactly one campaign product must be primary");
+    const probableDuplicates = await tx.select().from(campaignsTable).where(and(
+      sql`${campaignsTable.campaignKey} <> ${locked.campaignKey}`,
+      sql`regexp_replace(lower(trim(${campaignsTable.name})), '[^a-z0-9]+', ' ', 'g') = regexp_replace(lower(trim(${locked.name})), '[^a-z0-9]+', ' ', 'g')`,
+      eq(campaignsTable.campaignType, locked.campaignType),
+      sql`coalesce(${campaignsTable.startDate}, date '0001-01-01') = coalesce(${locked.startDate}, date '0001-01-01')`,
+    ));
+    if (issues.length) return { readiness: { ready: false, issues, probableDuplicates: probableDuplicates.map(campaignResponse) } } as const;
+    const [updated] = await tx.update(campaignsTable).set({
+      status: "submitted", submittedAt: new Date(), issueSummary: [], rowVersion: locked.rowVersion + 1, updatedAt: new Date(), updatedBy: actorId,
+    }).where(and(
+      eq(campaignsTable.campaignKey, locked.campaignKey),
+      eq(campaignsTable.status, "draft"),
+      eq(campaignsTable.rowVersion, locked.rowVersion),
+    )).returning();
+    if (!updated) return { conflict: "Campaign is no longer the observed draft version" } as const;
+    await tx.insert(campaignHistoryTable).values({ campaignKey: updated.campaignKey, action: "submitted", actorId, reason: body.data.reason, snapshot: updated });
+    return { updated } as const;
+  });
+  if ("conflict" in outcome) { res.status(409).json({ error: outcome.conflict }); return; }
+  if ("readiness" in outcome) { res.status(409).json(GetCampaignReadinessResponse.parse(outcome.readiness)); return; }
+  res.json(SubmitCampaignResponse.parse(campaignResponse(outcome.updated)));
 });
 
 router.put("/campaigns/:campaignKey/audiences", async (req, res): Promise<void> => {
@@ -296,41 +503,132 @@ router.put("/campaigns/:campaignKey/audiences", async (req, res): Promise<void> 
   const params = ReplaceCampaignAudiencesParams.safeParse(req.params);
   const body = ReplaceCampaignAudiencesBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid audience plan" }); return; }
-  const selections = body.data.selections;
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
+  if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!await requireCampaignOwner(req, res, campaign)) return;
+  const selections = body.data.selections as Array<(typeof body.data.selections)[number] & {
+    treatmentId?: string | null;
+  }>;
+  const campaignSourceKey = campaign.parentCampaignKey ?? campaign.copiedFromCampaignKey;
+  if (selections.some((item) => item.provenance === "inherited" && item.inheritedFromCampaignKey !== campaignSourceKey)) {
+    res.status(400).json({ error: "Inherited audience provenance must match the immutable campaign source" }); return;
+  }
   const keys = selections.map((item) => `${item.dimension}:${item.governedValueId ?? item.unresolvedLabel?.toLowerCase()}`);
   if (new Set(keys).size !== keys.length) { res.status(400).json({ error: "Duplicate audience selections are not allowed" }); return; }
   if (selections.filter((item) => item.dimension === "segment_family" && item.isPrimary).length !== 1) {
     res.status(400).json({ error: "Exactly one primary segment is required" }); return;
   }
-  if (selections.some((item) => item.dimension === "account_size_tier" && !item.measurementBasis)) {
-    res.status(400).json({ error: "Account size tiers require a measurement basis and threshold" }); return;
+  if (selections.some((item) => item.dimension !== "segment_family" && item.isPrimary)) {
+    res.status(400).json({ error: "Only a segment-family selection may be primary" }); return;
   }
   const governedIds = selections.flatMap((item) => item.governedValueId ? [item.governedValueId] : []);
   const governed = governedIds.length ? await db.select().from(governedValuesTable).where(or(...governedIds.map((id) => eq(governedValuesTable.id, id)))) : [];
-  if (governed.length !== new Set(governedIds).size) { res.status(400).json({ error: "Audience plan references an unknown governed value" }); return; }
+  if (governed.length !== new Set(governedIds).size ||
+      governed.some((value) => !["active", "approved"].includes(value.status))) {
+    res.status(400).json({ error: "Audience plan must reference active or approved governed values" }); return;
+  }
+  if (selections.some((item) => item.governedValueId &&
+    governed.find((value) => value.id === item.governedValueId)?.category !== DIMENSION_CATEGORIES[item.dimension])) {
+    res.status(400).json({ error: "Audience value category does not match its dimension" }); return;
+  }
+  if (selections.some((item) => item.unresolvedLabel && !/^(other|all|mixed(?:-title)?|other\s*\/\s*mixed-title)$/i.test(item.unresolvedLabel))) {
+    res.status(400).json({ error: "Raw audience values are limited to unresolved Other, All, or Mixed-title classifications" }); return;
+  }
   const invalidPersona = governed.some((value) => value.category === "persona" && /^(other|all|mixed-title)$/i.test(value.displayName));
   if (invalidPersona) { res.status(400).json({ error: "Other, All, and Mixed-title require an unresolved governance request, not a permanent persona" }); return; }
-  const rows = await db.transaction(async (tx) => {
+  const primarySegmentId = selections.find((item) => item.dimension === "segment_family" && item.isPrimary)?.governedValueId;
+  const accountTierSelections = selections.filter((item) => item.dimension === "account_size_tier");
+  const effectiveDate = campaign.startDate ?? new Date().toISOString().slice(0, 10);
+  const effectiveEnd = campaign.endDate ?? effectiveDate;
+  const accountRules = primarySegmentId && accountTierSelections.length
+    ? await db.select().from(accountSizeRulesTable).where(and(
+      eq(accountSizeRulesTable.segmentId, primarySegmentId),
+      inArray(accountSizeRulesTable.tierId, accountTierSelections.flatMap((item) => item.governedValueId ? [item.governedValueId] : [])),
+      sql`${accountSizeRulesTable.effectiveStart} <= ${effectiveDate}`,
+      or(sql`${accountSizeRulesTable.effectiveEnd} is null`, sql`${accountSizeRulesTable.effectiveEnd} >= ${effectiveEnd}`),
+    )).orderBy(desc(accountSizeRulesTable.effectiveStart), desc(sql`coalesce(nullif(substring(${accountSizeRulesTable.version} from '[0-9]+'), '')::integer, 0)`), desc(accountSizeRulesTable.id))
+    : [];
+  const selectedAccountRules = new Map(accountTierSelections.map((item) => [
+    item.governedValueId,
+    accountRules.find((rule) => rule.tierId === item.governedValueId),
+  ]));
+  if (accountTierSelections.some((item) => {
+    const rule = selectedAccountRules.get(item.governedValueId);
+    return !rule || rule.measurementBasis !== item.measurementBasis;
+  })) {
+    res.status(400).json({ error: "Each account-size tier requires a current segment-specific rule and matching measurement basis" }); return;
+  }
+  const channelValueIds = Array.isArray((campaign.setupData as Record<string, unknown>).channelValueIds)
+    ? (campaign.setupData as { channelValueIds: string[] }).channelValueIds : [];
+  const cohortSelections = selections.filter((item) => item.dimension === "messaging_cohort" && item.governedValueId);
+  const cohortPlans: Array<{ governedValueId: string; treatmentId: string; treatmentVersion: string }> = [];
+  for (const item of cohortSelections) {
+    const versions = await db.select().from(messagingCohortVersionsTable)
+      .where(eq(messagingCohortVersionsTable.governedValueId, item.governedValueId!));
+    const selected = chooseCohortTreatment(versions.filter((version) =>
+      !version.effectiveEnd || version.effectiveEnd >= effectiveEnd
+    ).map((version) => ({
+      ...version, stableKey: version.governedValueId, status: "active", eligibleChannels: version.eligibleChannelValueIds,
+    })), effectiveDate, channelValueIds, item.treatmentId);
+    if (!selected) { res.status(400).json({ error: "No active, effective cohort treatment supports every selected channel" }); return; }
+    cohortPlans.push({ governedValueId: item.governedValueId!, treatmentId: selected.id, treatmentVersion: selected.version });
+  }
+  const outcome = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey)).for("update");
+    if (!locked) return null;
+    const nextRowVersion = nextCampaignPlanVersion(locked.status, locked.rowVersion, body.data.rowVersion);
+    if (!nextRowVersion) return null;
+    const observedChannels = Array.isArray((campaign.setupData as { channelValueIds?: unknown }).channelValueIds)
+      ? (campaign.setupData as { channelValueIds: string[] }).channelValueIds : [];
+    const lockedChannels = Array.isArray((locked.setupData as { channelValueIds?: unknown }).channelValueIds)
+      ? (locked.setupData as { channelValueIds: string[] }).channelValueIds : [];
+    if (locked.startDate !== campaign.startDate || locked.endDate !== campaign.endDate
+      || [...lockedChannels].sort().join(",") !== [...observedChannels].sort().join(",")) return null;
     await tx.delete(campaignAudienceSelectionsTable).where(eq(campaignAudienceSelectionsTable.campaignKey, params.data.campaignKey));
-    const unresolved = selections.filter((item) => item.unresolvedLabel);
-    for (const item of unresolved) await tx.insert(taxonomyReviewRequestsTable).values({
-      category: item.dimension === "segment_family" ? "segment" : item.dimension,
-      proposedName: item.unresolvedLabel!,
-      context: `Unresolved campaign audience classification for ${params.data.campaignKey}`,
-      requestedBy: actorId,
-    });
-    if (!selections.length) return [];
-    return tx.insert(campaignAudienceSelectionsTable).values(selections.map((item) => ({
+    await tx.delete(campaignCohortTreatmentsTable).where(eq(campaignCohortTreatmentsTable.campaignKey, params.data.campaignKey));
+    if (cohortPlans.length) await tx.insert(campaignCohortTreatmentsTable).values(cohortPlans.map((plan) => ({ ...plan, campaignKey: params.data.campaignKey })));
+    const reviewRequestIds = new Map<string, string>();
+    for (const item of selections.filter((selection) => selection.unresolvedLabel)) {
+      const [request] = await tx.insert(taxonomyReviewRequestsTable).values({
+        category: DIMENSION_CATEGORIES[item.dimension],
+        proposedName: item.unresolvedLabel!,
+        context: `Unresolved campaign audience classification for ${params.data.campaignKey}`,
+        requestedBy: actorId,
+      }).returning();
+      reviewRequestIds.set(`${item.dimension}:${item.unresolvedLabel}`, request.id);
+    }
+    const rows = selections.length ? await tx.insert(campaignAudienceSelectionsTable).values(selections.map(({ treatmentId: _treatmentId, ...item }) => ({
       ...item,
       campaignKey: params.data.campaignKey,
+      accountSizeRuleVersion: item.dimension === "account_size_tier"
+        ? selectedAccountRules.get(item.governedValueId)?.version : null,
+      accountSizeRuleId: item.dimension === "account_size_tier"
+        ? selectedAccountRules.get(item.governedValueId)?.id : null,
+      reviewRequestId: item.unresolvedLabel ? reviewRequestIds.get(`${item.dimension}:${item.unresolvedLabel}`) : null,
+      resolutionStatus: item.unresolvedLabel ? "pending_review" : "governed",
       warningCodes: [
         ...(item.estimatedAudienceCount != null && item.estimatedAudienceCount < 100 ? ["TOO_SMALL"] : []),
         ...(item.estimatedAudienceCount != null && item.estimatedAudienceCount > 10_000_000 ? ["TOO_BROAD"] : []),
         ...(!item.governedValueId ? ["UNRESOLVED_CLASSIFICATION"] : []),
       ],
-    }))).returning();
+    }))).returning() : [];
+    const [versioned] = await tx.update(campaignsTable).set({
+      rowVersion: nextRowVersion,
+      updatedAt: new Date(),
+      updatedBy: actorId,
+    }).where(and(
+      eq(campaignsTable.campaignKey, locked.campaignKey),
+      eq(campaignsTable.rowVersion, locked.rowVersion),
+      eq(campaignsTable.status, "draft"),
+    )).returning({ rowVersion: campaignsTable.rowVersion });
+    if (!versioned) return null;
+    return { rows, rowVersion: versioned.rowVersion };
   });
-  res.json(ReplaceCampaignAudiencesResponse.parse(rows.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() }))));
+  if (!outcome) { res.status(409).json({ error: "Campaign version is stale; reload the draft and revisit Cohorts & sizing" }); return; }
+  res.json(ReplaceCampaignAudiencesResponse.parse({
+    rowVersion: outcome.rowVersion,
+    selections: outcome.rows.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
+  }));
 });
 
 router.put("/campaigns/:campaignKey/products", async (req, res): Promise<void> => {
@@ -338,23 +636,51 @@ router.put("/campaigns/:campaignKey/products", async (req, res): Promise<void> =
   const params = ReplaceCampaignProductsParams.safeParse(req.params);
   const body = ReplaceCampaignProductsBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid product plan" }); return; }
-  const keys = body.data.associations.map((item) => `${item.productValueId}:${item.role}`);
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
+  if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!await requireCampaignOwner(req, res, campaign)) return;
+  const keys = body.data.associations.map((item) => item.productValueId);
   if (new Set(keys).size !== keys.length) { res.status(400).json({ error: "Duplicate product associations are not allowed" }); return; }
+  if (body.data.associations.length && body.data.associations.filter((item) => item.isPrimary).length !== 1) {
+    res.status(400).json({ error: "Exactly one campaign product must be primary" }); return;
+  }
+  const campaignSourceKey = campaign.parentCampaignKey ?? campaign.copiedFromCampaignKey;
+  if (body.data.associations.some((item) => item.provenance === "inherited" && item.inheritedFromCampaignKey !== campaignSourceKey)) {
+    res.status(400).json({ error: "Inherited product provenance must match the immutable campaign source" }); return;
+  }
   const values = body.data.associations.length
     ? await db.select().from(governedValuesTable).where(or(...body.data.associations.map((item) => eq(governedValuesTable.id, item.productValueId))))
     : [];
   if (values.length !== new Set(body.data.associations.map((item) => item.productValueId)).size ||
-      values.some((value) => !["product", "capability_solution"].includes(value.category))) {
-    res.status(400).json({ error: "Associations must reference governed products or capabilities" }); return;
+      values.some((value) => !["product", "capability_solution"].includes(value.category) || !["active", "approved"].includes(value.status))) {
+    res.status(400).json({ error: "Associations must reference active or approved governed products or capabilities" }); return;
   }
-  const rows = await db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey)).for("update");
+    if (!locked) return null;
+    const nextRowVersion = nextCampaignPlanVersion(locked.status, locked.rowVersion, body.data.rowVersion);
+    if (!nextRowVersion) return null;
     await tx.delete(campaignProductAssociationsTable).where(eq(campaignProductAssociationsTable.campaignKey, params.data.campaignKey));
-    if (!body.data.associations.length) return [];
-    return tx.insert(campaignProductAssociationsTable).values(body.data.associations.map((item) => ({
+    const rows = body.data.associations.length ? await tx.insert(campaignProductAssociationsTable).values(body.data.associations.map((item) => ({
       ...item, campaignKey: params.data.campaignKey,
-    }))).returning();
+    }))).returning() : [];
+    const [versioned] = await tx.update(campaignsTable).set({
+      rowVersion: nextRowVersion,
+      updatedAt: new Date(),
+      updatedBy: actorId,
+    }).where(and(
+      eq(campaignsTable.campaignKey, locked.campaignKey),
+      eq(campaignsTable.rowVersion, locked.rowVersion),
+      eq(campaignsTable.status, "draft"),
+    )).returning({ rowVersion: campaignsTable.rowVersion });
+    if (!versioned) return null;
+    return { rows, rowVersion: versioned.rowVersion };
   });
-  res.json(ReplaceCampaignProductsResponse.parse(rows.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() }))));
+  if (!outcome) { res.status(409).json({ error: "Campaign version is stale; reload the draft before replacing products" }); return; }
+  res.json(ReplaceCampaignProductsResponse.parse({
+    rowVersion: outcome.rowVersion,
+    associations: outcome.rows.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
+  }));
 });
 
 async function validateActivityProducts(campaignKey: string, productValueIds: string[]): Promise<string | null> {
@@ -521,6 +847,7 @@ router.post("/campaigns/:campaignKey/activities", async (req, res): Promise<void
   if (deliveryEndDate < deliveryStartDate) { res.status(400).json({ error: "Delivery end cannot precede delivery start" }); return; }
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey));
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  if (!await requireCampaignOwner(req, res, campaign)) return;
   const campaignEnd = campaign.isEvergreen ? campaign.reviewDate : campaign.endDate;
   if ((campaign.startDate && deliveryStartDate < campaign.startDate) || (campaignEnd && deliveryEndDate > campaignEnd)) {
     res.status(400).json({ error: "Activity dates must be within campaign dates" }); return;
@@ -631,6 +958,12 @@ router.patch("/activities/:activityId", async (req, res): Promise<void> => {
   const params = UpdateCampaignActivityParams.safeParse(req.params);
   const body = UpdateCampaignActivityBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid activity update" }); return; }
+  const [activityCampaign] = await db.select({ campaign: campaignsTable })
+    .from(campaignActivitiesTable)
+    .innerJoin(campaignsTable, eq(campaignsTable.campaignKey, campaignActivitiesTable.campaignKey))
+    .where(eq(campaignActivitiesTable.id, params.data.activityId));
+  if (!activityCampaign) { res.status(404).json({ error: "Activity not found" }); return; }
+  if (!await requireCampaignOwner(req, res, activityCampaign.campaign)) return;
 
   const deliveryStartDate = dateString(body.data.deliveryStartDate)!;
   const deliveryEndDate = dateString(body.data.deliveryEndDate)!;

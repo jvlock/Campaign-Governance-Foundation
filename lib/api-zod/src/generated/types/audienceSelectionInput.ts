@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { AudienceDimension } from './audienceDimension';
+import type { AudienceSelectionInputProvenance } from './audienceSelectionInputProvenance';
 
 export interface AudienceSelectionInput {
   dimension: AudienceDimension;
@@ -14,6 +15,9 @@ export interface AudienceSelectionInput {
   /** @nullable */
   unresolvedLabel?: string | null;
   isPrimary: boolean;
+  provenance?: AudienceSelectionInputProvenance;
+  /** @nullable */
+  inheritedFromCampaignKey?: string | null;
   /** @nullable */
   rawRepresentativeTitle?: string | null;
   /**
@@ -23,4 +27,9 @@ export interface AudienceSelectionInput {
   estimatedAudienceCount?: number | null;
   /** @nullable */
   measurementBasis?: string | null;
+  /**
+     * Exact messaging cohort treatment version; current effective version is selected deterministically when omitted
+     * @nullable
+     */
+  treatmentId?: string | null;
 }

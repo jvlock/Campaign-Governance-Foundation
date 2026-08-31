@@ -43,6 +43,7 @@ import {
   activityProductAssociationsTable,
   activityTypeConfigurationsTable,
   campaignActivitiesTable,
+  campaignsTable,
   deliveryPlatformConnectionsTable,
   db,
   executionPublishAttemptsTable,
@@ -56,9 +57,31 @@ import {
   validateDeliveryEndpoint,
 } from "../lib/campaign-domain";
 import { postDeliveryPayload } from "../lib/delivery-platform-client";
+import { requireCampaignAccess } from "../lib/campaign-authorization";
 
 const router: IRouter = Router();
 router.use(requireMutationAuth);
+
+async function authorizeCampaignKey(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], campaignKey: string, mode: "view" | "mutate") {
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, campaignKey));
+  if (!campaign) { res.status(404).json({ error: "Resource not found" }); return undefined; }
+  return await requireCampaignAccess(req, res, campaign, mode) ? campaign : undefined;
+}
+
+async function authorizeActivity(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], activityId: string, mode: "view" | "mutate") {
+  const [activity] = await db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, activityId));
+  if (!activity) { res.status(404).json({ error: "Resource not found" }); return undefined; }
+  return await authorizeCampaignKey(req, res, activity.campaignKey, mode) ? activity : undefined;
+}
+
+async function authorizeExecution(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], executionKey: string, mode: "view" | "mutate") {
+  const [context] = await db.select({ execution: activityExecutionsTable, activity: campaignActivitiesTable })
+    .from(activityExecutionsTable)
+    .innerJoin(campaignActivitiesTable, eq(campaignActivitiesTable.id, activityExecutionsTable.activityId))
+    .where(eq(activityExecutionsTable.executionKey, executionKey));
+  if (!context) { res.status(404).json({ error: "Resource not found" }); return undefined; }
+  return await authorizeCampaignKey(req, res, context.activity.campaignKey, mode) ? context : undefined;
+}
 
 const MCP_INTENTS = ["awareness", "consideration", "evaluation", "conversion", "retention"];
 function validateConfigurationDefinition(input: { questions: Array<{ key: string; requiredWhen?: { field: string }; options?: string[] }>; validations: Record<string, unknown>; namingTemplate: string; memberStatuses: string[]; inheritableFields: string[]; permittedOverrides: string[] }): string | undefined {
@@ -272,6 +295,7 @@ router.post("/activity-type-configurations/:configurationId/publish", async (req
 router.get("/activities/:activityId/executions", async (req, res): Promise<void> => {
   const params = ListActivityExecutionsParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid activity key" }); return; }
+  if (!await authorizeActivity(req, res, params.data.activityId, "view")) return;
   const rows = await db.select().from(activityExecutionsTable)
     .where(eq(activityExecutionsTable.activityId, params.data.activityId))
     .orderBy(desc(activityExecutionsTable.createdAt));
@@ -283,6 +307,7 @@ router.post("/activities/:activityId/executions", async (req, res): Promise<void
   const params = CreateActivityExecutionParams.safeParse(req.params);
   const body = CreateActivityExecutionBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid execution" }); return; }
+  if (!await authorizeActivity(req, res, params.data.activityId, "mutate")) return;
   if (body.data.status && body.data.status.toLowerCase() !== "draft") {
     res.status(400).json({ error: "Executions must be created as drafts before approval" }); return;
   }
@@ -303,6 +328,7 @@ router.patch("/executions/:executionKey", async (req, res): Promise<void> => {
   const params = UpdateActivityExecutionParams.safeParse(req.params);
   const body = UpdateActivityExecutionBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid execution update" }); return; }
+  if (!await authorizeExecution(req, res, params.data.executionKey, "mutate")) return;
   const [current] = await db.select({
     execution: activityExecutionsTable, activity: campaignActivitiesTable,
   }).from(activityExecutionsTable).innerJoin(
@@ -348,9 +374,12 @@ router.post("/executions/:executionKey/copy", async (req, res): Promise<void> =>
   const params = CopyActivityExecutionParams.safeParse(req.params);
   const body = CopyActivityExecutionBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid execution copy" }); return; }
+  const authorizedSource = await authorizeExecution(req, res, params.data.executionKey, "mutate");
+  if (!authorizedSource) return;
   const [source] = await db.select().from(activityExecutionsTable).where(eq(activityExecutionsTable.executionKey, params.data.executionKey));
   if (!source) { res.status(404).json({ error: "Execution not found" }); return; }
   const targetActivityId = body.data.targetActivityId ?? source.activityId;
+  if (!await authorizeActivity(req, res, targetActivityId, "mutate")) return;
   const [[target], [sourceActivity]] = await Promise.all([
     db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, targetActivityId)),
     db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, source.activityId)),
@@ -382,6 +411,7 @@ router.post("/executions/:executionKey/versions", async (req, res): Promise<void
   const params = VersionActivityExecutionParams.safeParse(req.params);
   const body = VersionActivityExecutionBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid execution version" }); return; }
+  if (!await authorizeExecution(req, res, params.data.executionKey, "mutate")) return;
   const [source] = await db.select().from(activityExecutionsTable).where(eq(activityExecutionsTable.executionKey, params.data.executionKey));
   if (!source) { res.status(404).json({ error: "Execution not found" }); return; }
   const [activity] = await db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, source.activityId));
@@ -463,6 +493,7 @@ router.post("/executions/:executionKey/publish-preview", async (req, res): Promi
   const params = PreviewActivityExecutionPublishParams.safeParse(req.params);
   const body = PreviewActivityExecutionPublishBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid publish preview" }); return; }
+  if (!await authorizeExecution(req, res, params.data.executionKey, "mutate")) return;
   const context = await loadPublishContext(params.data.executionKey, body.data.platformConnectionId);
   if ("error" in context) { res.status(context.status!).json({ error: context.error }); return; }
   const [attempt] = await db.insert(executionPublishAttemptsTable).values({
@@ -496,6 +527,7 @@ router.post("/executions/:executionKey/publish", async (req, res): Promise<void>
   const params = PublishActivityExecutionParams.safeParse(req.params);
   const body = PublishActivityExecutionBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid publication" }); return; }
+  if (!await authorizeExecution(req, res, params.data.executionKey, "mutate")) return;
   const context = await loadPublishContext(params.data.executionKey, body.data.platformConnectionId);
   if ("error" in context) { res.status(context.status!).json({ error: context.error }); return; }
 
@@ -635,6 +667,7 @@ router.get("/executions/:executionKey/publish-attempts", async (req, res): Promi
   if (!await requireConfigurationAdministrator(req, res)) return;
   const params = ListExecutionPublishAttemptsParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid execution key" }); return; }
+  if (!await authorizeExecution(req, res, params.data.executionKey, "view")) return;
   const rows = await db.select().from(executionPublishAttemptsTable)
     .where(eq(executionPublishAttemptsTable.executionKey, params.data.executionKey))
     .orderBy(desc(executionPublishAttemptsTable.createdAt));

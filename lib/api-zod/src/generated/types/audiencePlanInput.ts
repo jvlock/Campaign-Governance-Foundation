@@ -8,5 +8,7 @@
 import type { AudienceSelectionInput } from './audienceSelectionInput';
 
 export interface AudiencePlanInput {
+  /** @minimum 1 */
+  rowVersion: number;
   selections: AudienceSelectionInput[];
 }

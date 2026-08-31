@@ -7,9 +7,16 @@
  */
 import type { AudienceSelectionInput } from './audienceSelectionInput';
 
-export type AudienceSelection = AudienceSelectionInput & {
+export type AudienceSelection = AudienceSelectionInput & ({
   id: string;
   campaignKey: string;
   warningCodes: string[];
+  /** @nullable */
+  accountSizeRuleVersion?: string | null;
+  /** @nullable */
+  accountSizeRuleId?: string | null;
+  /** @nullable */
+  reviewRequestId?: string | null;
+  resolutionStatus?: string;
   createdAt: Date;
-};
+});

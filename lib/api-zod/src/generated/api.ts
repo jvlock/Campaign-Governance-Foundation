@@ -119,12 +119,12 @@ export const GetTaxonomyAccessResponse = zod.object({
   "canReview": zod.boolean(),
   "canActivate": zod.boolean(),
   "canAdminister": zod.boolean(),
-  "categories": zod.array(zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']))
+  "categories": zod.array(zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']))
 })
 
 
 export const ListTaxonomyCategoriesResponseItem = zod.object({
-  "key": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "key": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string(),
   "supportsParent": zod.boolean(),
   "supportsMeasurementRule": zod.boolean()
@@ -133,7 +133,7 @@ export const ListTaxonomyCategoriesResponse = zod.array(ListTaxonomyCategoriesRe
 
 
 export const ListGovernedValuesQueryParams = zod.object({
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']).optional(),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']).optional(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']).optional(),
   "search": zod.coerce.string().optional(),
   "parentId": zod.coerce.string().optional()
@@ -142,7 +142,7 @@ export const ListGovernedValuesQueryParams = zod.object({
 export const ListGovernedValuesResponseItem = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -174,7 +174,7 @@ export const createGovernedValueBodyStableKeyMin = 3;
 
 export const CreateGovernedValueBody = zod.object({
   "stableKey": zod.string().min(createGovernedValueBodyStableKeyMin),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string().min(1),
   "definition": zod.string().min(1),
   "effectiveStart": zod.string(),
@@ -190,7 +190,7 @@ export const CreateGovernedValueBody = zod.object({
 export const CreateGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -217,7 +217,7 @@ export const GetGovernedValueParams = zod.object({
 export const GetGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -280,7 +280,7 @@ export const UpdateGovernedValueBody = zod.object({
 export const UpdateGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -324,7 +324,7 @@ export const TransitionGovernedValueBody = zod.object({
 export const TransitionGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -378,7 +378,7 @@ export const CreateTaxonomyAssociationResponse = zod.object({
 
 export const ListTaxonomyReviewRequestsResponseItem = zod.object({
   "id": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "proposedName": zod.string(),
   "context": zod.string(),
   "status": zod.enum(['open', 'resolved', 'rejected']),
@@ -389,14 +389,14 @@ export const ListTaxonomyReviewRequestsResponse = zod.array(ListTaxonomyReviewRe
 
 
 export const CreateTaxonomyReviewRequestBody = zod.object({
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "proposedName": zod.string(),
   "context": zod.string()
 })
 
 export const CreateTaxonomyReviewRequestResponse = zod.object({
   "id": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
   "proposedName": zod.string(),
   "context": zod.string(),
   "status": zod.enum(['open', 'resolved', 'rejected']),
@@ -554,6 +554,21 @@ export const CreateCampaignResponse = zod.object({
   "updatedBy": zod.string(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})
+
+
+export const GetCampaignReportingDimensionsResponse = zod.object({
+  "campaignCount": zod.number(),
+  "audience": zod.array(zod.record(zod.string(), zod.unknown())),
+  "products": zod.array(zod.record(zod.string(), zod.unknown())),
+  "cohorts": zod.array(zod.object({
+  "governedValueId": zod.string(),
+  "treatmentId": zod.string(),
+  "treatmentVersion": zod.string()
+})),
+  "authoritativeCosts": zod.array(zod.record(zod.string(), zod.unknown())),
+  "warningCount": zod.number(),
+  "unresolvedCount": zod.number()
 })
 
 
@@ -861,9 +876,10 @@ export const GetCampaignParams = zod.object({
   "campaignKey": zod.coerce.string()
 })
 
+export const getCampaignResponseTwoAudiencesItemOneProvenanceDefault = `selected`;
 export const getCampaignResponseTwoAudiencesItemOneEstimatedAudienceCountMin = 0;
 
-
+export const getCampaignResponseTwoProductsItemOneProvenanceDefault = `selected`;
 export const getCampaignResponseTwoActivitiesItemOneOneAuthoritativeCostMinorRegExp = new RegExp('^-?[0-9]+$');
 export const getCampaignResponseTwoActivitiesItemOneOneCurrencyMin = 3;
 export const getCampaignResponseTwoActivitiesItemOneOneCurrencyMax = 3;
@@ -927,24 +943,38 @@ export const GetCampaignResponse = zod.object({
   "governedValueId": zod.string().nullish(),
   "unresolvedLabel": zod.string().nullish(),
   "isPrimary": zod.boolean(),
+  "provenance": zod.enum(['selected', 'inherited', 'unresolved']).default(getCampaignResponseTwoAudiencesItemOneProvenanceDefault),
+  "inheritedFromCampaignKey": zod.string().nullish(),
   "rawRepresentativeTitle": zod.string().nullish(),
   "estimatedAudienceCount": zod.number().min(getCampaignResponseTwoAudiencesItemOneEstimatedAudienceCountMin).nullish(),
-  "measurementBasis": zod.string().nullish()
+  "measurementBasis": zod.string().nullish(),
+  "treatmentId": zod.string().nullish().describe('Exact messaging cohort treatment version; current effective version is selected deterministically when omitted')
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
   "warningCodes": zod.array(zod.string()),
+  "accountSizeRuleVersion": zod.string().nullish(),
+  "accountSizeRuleId": zod.string().nullish(),
+  "reviewRequestId": zod.string().nullish(),
+  "resolutionStatus": zod.string().optional(),
   "createdAt": zod.coerce.date()
 }))),
   "products": zod.array(zod.object({
   "productValueId": zod.string(),
   "role": zod.enum(['primary_solution', 'supporting_capability', 'cross_sell_offer', 'upsell_offer', 'proof_point', 'content_data_source', 'cta_destination', 'internal_relevance']),
-  "isPrimary": zod.boolean()
+  "isPrimary": zod.boolean(),
+  "provenance": zod.enum(['selected', 'inherited']).default(getCampaignResponseTwoProductsItemOneProvenanceDefault),
+  "inheritedFromCampaignKey": zod.string().nullish()
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
   "createdAt": zod.coerce.date()
 }))),
+  "cohortTreatments": zod.array(zod.object({
+  "governedValueId": zod.string(),
+  "treatmentId": zod.string(),
+  "treatmentVersion": zod.string()
+})),
   "activities": zod.array(zod.object({
   "name": zod.string().min(1),
   "deliveryStartDate": zod.coerce.date(),
@@ -1209,8 +1239,10 @@ export const SubmitCampaignParams = zod.object({
 
 
 
+
 export const SubmitCampaignBody = zod.object({
-  "reason": zod.string().min(1)
+  "reason": zod.string().min(1),
+  "rowVersion": zod.number().min(1)
 })
 
 export const SubmitCampaignResponse = zod.object({
@@ -1244,65 +1276,93 @@ export const ReplaceCampaignAudiencesParams = zod.object({
   "campaignKey": zod.coerce.string()
 })
 
+
+export const replaceCampaignAudiencesBodySelectionsItemProvenanceDefault = `selected`;
 export const replaceCampaignAudiencesBodySelectionsItemEstimatedAudienceCountMin = 0;
 
 
 
 export const ReplaceCampaignAudiencesBody = zod.object({
+  "rowVersion": zod.number().min(1),
   "selections": zod.array(zod.object({
   "dimension": zod.enum(['segment_family', 'subsegment', 'account_size_tier', 'account_priority', 'relationship', 'buying_group_function', 'persona', 'seniority', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'region', 'country', 'language', 'journey_stage']),
   "governedValueId": zod.string().nullish(),
   "unresolvedLabel": zod.string().nullish(),
   "isPrimary": zod.boolean(),
+  "provenance": zod.enum(['selected', 'inherited', 'unresolved']).default(replaceCampaignAudiencesBodySelectionsItemProvenanceDefault),
+  "inheritedFromCampaignKey": zod.string().nullish(),
   "rawRepresentativeTitle": zod.string().nullish(),
   "estimatedAudienceCount": zod.number().min(replaceCampaignAudiencesBodySelectionsItemEstimatedAudienceCountMin).nullish(),
-  "measurementBasis": zod.string().nullish()
+  "measurementBasis": zod.string().nullish(),
+  "treatmentId": zod.string().nullish().describe('Exact messaging cohort treatment version; current effective version is selected deterministically when omitted')
 }))
 })
 
-export const replaceCampaignAudiencesResponseOneEstimatedAudienceCountMin = 0;
+export const replaceCampaignAudiencesResponseSelectionsItemOneProvenanceDefault = `selected`;
+export const replaceCampaignAudiencesResponseSelectionsItemOneEstimatedAudienceCountMin = 0;
 
 
 
-export const ReplaceCampaignAudiencesResponseItem = zod.object({
+export const ReplaceCampaignAudiencesResponse = zod.object({
+  "rowVersion": zod.number(),
+  "selections": zod.array(zod.object({
   "dimension": zod.enum(['segment_family', 'subsegment', 'account_size_tier', 'account_priority', 'relationship', 'buying_group_function', 'persona', 'seniority', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'region', 'country', 'language', 'journey_stage']),
   "governedValueId": zod.string().nullish(),
   "unresolvedLabel": zod.string().nullish(),
   "isPrimary": zod.boolean(),
+  "provenance": zod.enum(['selected', 'inherited', 'unresolved']).default(replaceCampaignAudiencesResponseSelectionsItemOneProvenanceDefault),
+  "inheritedFromCampaignKey": zod.string().nullish(),
   "rawRepresentativeTitle": zod.string().nullish(),
-  "estimatedAudienceCount": zod.number().min(replaceCampaignAudiencesResponseOneEstimatedAudienceCountMin).nullish(),
-  "measurementBasis": zod.string().nullish()
+  "estimatedAudienceCount": zod.number().min(replaceCampaignAudiencesResponseSelectionsItemOneEstimatedAudienceCountMin).nullish(),
+  "measurementBasis": zod.string().nullish(),
+  "treatmentId": zod.string().nullish().describe('Exact messaging cohort treatment version; current effective version is selected deterministically when omitted')
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
   "warningCodes": zod.array(zod.string()),
+  "accountSizeRuleVersion": zod.string().nullish(),
+  "accountSizeRuleId": zod.string().nullish(),
+  "reviewRequestId": zod.string().nullish(),
+  "resolutionStatus": zod.string().optional(),
   "createdAt": zod.coerce.date()
-}))
-export const ReplaceCampaignAudiencesResponse = zod.array(ReplaceCampaignAudiencesResponseItem)
+})))
+})
 
 
 export const ReplaceCampaignProductsParams = zod.object({
   "campaignKey": zod.coerce.string()
 })
 
+
+export const replaceCampaignProductsBodyAssociationsItemProvenanceDefault = `selected`;
+
 export const ReplaceCampaignProductsBody = zod.object({
+  "rowVersion": zod.number().min(1),
   "associations": zod.array(zod.object({
   "productValueId": zod.string(),
   "role": zod.enum(['primary_solution', 'supporting_capability', 'cross_sell_offer', 'upsell_offer', 'proof_point', 'content_data_source', 'cta_destination', 'internal_relevance']),
-  "isPrimary": zod.boolean()
+  "isPrimary": zod.boolean(),
+  "provenance": zod.enum(['selected', 'inherited']).default(replaceCampaignProductsBodyAssociationsItemProvenanceDefault),
+  "inheritedFromCampaignKey": zod.string().nullish()
 }))
 })
 
-export const ReplaceCampaignProductsResponseItem = zod.object({
+export const replaceCampaignProductsResponseAssociationsItemOneProvenanceDefault = `selected`;
+
+export const ReplaceCampaignProductsResponse = zod.object({
+  "rowVersion": zod.number(),
+  "associations": zod.array(zod.object({
   "productValueId": zod.string(),
   "role": zod.enum(['primary_solution', 'supporting_capability', 'cross_sell_offer', 'upsell_offer', 'proof_point', 'content_data_source', 'cta_destination', 'internal_relevance']),
-  "isPrimary": zod.boolean()
+  "isPrimary": zod.boolean(),
+  "provenance": zod.enum(['selected', 'inherited']).default(replaceCampaignProductsResponseAssociationsItemOneProvenanceDefault),
+  "inheritedFromCampaignKey": zod.string().nullish()
 }).and(zod.object({
   "id": zod.string(),
   "campaignKey": zod.string(),
   "createdAt": zod.coerce.date()
-}))
-export const ReplaceCampaignProductsResponse = zod.array(ReplaceCampaignProductsResponseItem)
+})))
+})
 
 
 export const CreateCampaignActivityParams = zod.object({

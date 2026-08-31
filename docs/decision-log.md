@@ -64,6 +64,13 @@
 
 **Reason:** The setup brief explicitly depends on prior Campaign Registry evidence, which is not part of this delivered phase.
 
+
+## 2026-08-28 — Campaign identity and hierarchy
+
+**Decision:** Generate an immutable non-semantic campaign key and keep normalized mutable names solely for duplicate detection. Represent campaign, wave, activity, journey, event, sales-cadence, and newsletter relationships with explicit parent rules.
+
+**Reason:** Names, periods, channels, and owners change; reporting identity and hierarchy cannot.
+
 ## 2026-08-29 — Enduring Campaign Key and normalized planning
 
 **Decision:** Generate an opaque UUID Campaign Key once. Keep names, UTM labels, fiscal periods, audiences, products, and activities as mutable or versioned records beneath that key. Model audience dimensions and product roles separately rather than duplicating a campaign.
@@ -105,3 +112,29 @@
 **Decision:** Campaign planning-period responses include a nested projection of their immutable fiscal-period reference. Publish preview requests continue to accept only the delivery connection; campaign key, activity delivery dates, products, configuration, and immutable execution identity are derived by the server. Protected MCP payloads expose only controlled intent configuration.
 
 **Reason:** Dependent workflow fields must reload consistently without clients guessing labels or submitting duplicated facts that can drift from governed campaign, fiscal, and execution records.
+
+## 2026-08-28 — Shared cost and product associations
+
+**Decision:** Associate each product once with a campaign and one explicit role. Store shared cost once on the campaign; activities may promote only a subset of parent products.
+
+**Reason:** Joining a campaign to several products must not duplicate either the campaign or its shared cost.
+
+
+## 2026-08-28 — Audience dimensions remain independent
+
+**Decision:** Store each audience dimension as an independent selection. Preserve raw titles in source-evidence records, outside canonical persona values. Other, All, and Mixed-title remain unresolved and generate governance requests.
+
+**Reason:** Personas, cohorts, account tiers, geography, and journey stage answer different questions and must report separately.
+
+
+## 2026-08-28 — Task 6 boundary
+
+**Decision:** Stop after Campaign Registry, guided setup, and multi-audience/multi-product planning. Do not implement downstream platform integrations or a product cost-allocation engine.
+
+**Reason:** Those systems require separate ownership and contracts.
+
+## 2026-08-28 — Explicit setup inheritance
+
+**Decision:** Related-work answers are copied only after a user chooses to inherit them. Every copied audience value records inherited provenance and its source campaign.
+
+**Reason:** Suggestions must not become silent selections, while activity creators should not re-answer approved campaign questions.

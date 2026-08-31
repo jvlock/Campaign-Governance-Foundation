@@ -109,7 +109,7 @@ export default function Campaigns() {
       ) : (
         <div className="flex flex-col gap-4">
           {campaigns.map((campaign) => (
-            <Link key={campaign.campaignKey} href={`/campaigns/${campaign.campaignKey}`}>
+            <Link key={campaign.campaignKey} href={campaign.status === "draft" ? `/create-campaign?draft=${campaign.campaignKey}` : `/campaigns/${campaign.campaignKey}`}>
               <Card className="border bg-card hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer group">
                 <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1.5 min-w-0 flex-1">
@@ -141,7 +141,7 @@ export default function Campaigns() {
                       <span className="font-medium text-foreground">{campaign.createdBy}</span>
                     </div>
                     <Button variant="ghost" size="sm" className="group-hover:bg-primary/10 group-hover:text-primary shrink-0 -mr-2">
-                      Manage Plan
+                      {campaign.status === "draft" ? "Continue guided setup" : "Manage Plan"}
                     </Button>
                   </div>
                 </CardContent>

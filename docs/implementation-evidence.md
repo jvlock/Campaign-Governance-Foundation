@@ -13,6 +13,40 @@
 - Explicit import conflict decisions, including the actual `na` source at `Definitions!R43C5`.
 - Retained-value policy in both UI and API; there is no permanent-delete workflow.
 - Immutable audit and governance-event tables protected by PostgreSQL triggers.
+- Campaign registry setup retains separate governed audience selections and product-role associations; primary-segment and meaningful-persona readiness checks prevent ambiguous campaign plans.
+- Versioned account-size rules, source evidence, and messaging-cohort treatments are forward-migrated and seeded idempotently for reporting governance.
+- Campaign creation is an eight-step, server-persisted wizard. Owned drafts resume from the registry and retain the current step in `setupData`; audience, cohort/rule, product, date, duplicate/readiness, and submission stages use the main campaign APIs.
+- Campaign access uses `createdBy` consistently as owner: production drafts and every setup mutation/detail/readiness operation are owner-or-administrator scoped.
+- Reporting returns separate audience, product, and exact cohort-treatment rows plus authoritative cost records counted once per cost, with unresolved and warning totals.
+- Submission and audience/product replacement serialize on the same campaign row lock. Submit recomputes readiness inside its transaction and requires the latest draft `rowVersion`.
+- Account-size selections persist the deterministic latest effective rule ID, version, and basis. Product and audience inheritance retain immutable source provenance; copies also retain exact cohort treatments.
+- Date/channel PATCH operations and submit both invoke the same locked persisted-governance invariant; stale exact rule or cohort IDs are rejected rather than silently replaced.
+- Audience/product PUT contracts require campaign `rowVersion`, increment it atomically with replacement, and return versioned response envelopes. Wizard and detail callers send current versions; the wizard chains every returned version through submission.
+- The idempotent taxonomy seed repairs canonical category/status metadata on stable-key conflicts. Guided setup queries active `segment` values explicitly for the `segment_family` dimension, including Asset Owners and Hedge Funds, and exposes primary-segment selection.
+- Shared object-level campaign authorization now covers direct campaign routes and indirect finance/activity/execution identifiers. Production mutations require owner/administrator access, non-draft reads require authentication, copy operations check source and target, and fiscal administration plus execution approval/publication remains administrator-only.
+- A production-mode HTTP integration test imports the Express app without its startup entrypoint, creates isolated owner/unrelated/admin sessions and linked campaign fixtures, and verifies uniform 403 responses across direct campaign, indirect cost, activity/execution, copy/version, and fiscal-administration routes before cleaning up all fixtures.
+- The same production integration test covers draft and submitted inheritance sources for both parent and copy relationships. Unrelated users receive the generic 403 before create/update inheritance, while source owners and administrators pass authorization preflight.
+- The full active governed-value catalog and active-segment query use isolated cache keys. The OpenAPI taxonomy-category enum covers all seeded categories, so account-priority, relationship, behavioral-cohort, and audience-origin rows cannot invalidate the catalog response.
+
+Task 6 final verification:
+
+- OpenAPI generation, full workspace TypeScript check, API production build, and web production build: passed.
+- Campaign governance API unit/integrity suite: **32 passed, 0 failed**, including production-mode HTTP authorization and source-inheritance BOLA coverage for unrelated-user, owner, and administrator sessions.
+- Cross-stack API/database/UI smoke suite: **23 passed, 0 failed**.
+- Post-merge setup completed non-interactively and restored migration-only integrity objects before reseeding governed data.
+- Live development database verification: 2 account-size rules, 3 messaging-cohort versions, 4 preserved evidence rows, both product uniqueness indexes, 12 planning foreign keys, and all 4 required main integrity triggers.
+- Authenticated browser E2E passed for draft creation/resume, Asset Owners primary segment, governed persona, compatible account-size tier, exact cohort/channel treatment, two products with one primary role, readiness, submission, reporting, and retained campaign activity/execution surfaces.
+- Independent architecture review: explicit approval with no release blockers.
+
+Task 6 browser evidence:
+
+- Review readiness: `d2e6tw`.
+- Cohorts and sizing: `9s0vmf`.
+- Primary/supporting products: `vax0m2`.
+- Submitted campaign detail: `9sxy54`.
+- Campaign registry: `xl5xqr`.
+- Reporting dimensions and non-duplicated shared cost: `b2y5oe`.
+- Saved screenshots: `screenshots/task-6-campaign-registry-final.jpg`, `screenshots/task-6-submitted-detail-final.jpg`, and `screenshots/task-6-reporting-final.jpg`.
 
 All supplied files under `reference-materials/` remain source evidence and were not modified.
 
@@ -28,6 +62,8 @@ All supplied files under `reference-materials/` remain source evidence and were 
 
 - OpenAPI code generation: passed.
 - Full TypeScript project check: passed.
+- Campaign governance API unit/integrity suite: **14 passed, 0 failed**.
+- API and web production builds: passed.
 - API and web managed workflow restarts: passed.
 - Database-aware health endpoint: HTTP 200.
 - Automated smoke suite: **23 passed, 0 failed**.

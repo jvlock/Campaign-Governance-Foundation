@@ -83,10 +83,14 @@ export const TaxonomyCategoryKey = {
   segment: 'segment',
   subsegment: 'subsegment',
   account_size_tier: 'account_size_tier',
+  account_priority_tier: 'account_priority_tier',
+  relationship: 'relationship',
   buying_group_function: 'buying_group_function',
   persona: 'persona',
   seniority_level: 'seniority_level',
   messaging_cohort: 'messaging_cohort',
+  behavioral_cohort: 'behavioral_cohort',
+  audience_origin: 'audience_origin',
   product: 'product',
   product_family: 'product_family',
   capability_solution: 'capability_solution',
@@ -620,6 +624,15 @@ export const AudienceDimension = {
   journey_stage: 'journey_stage',
 } as const;
 
+export type AudienceSelectionInputProvenance = typeof AudienceSelectionInputProvenance[keyof typeof AudienceSelectionInputProvenance];
+
+
+export const AudienceSelectionInputProvenance = {
+  selected: 'selected',
+  inherited: 'inherited',
+  unresolved: 'unresolved',
+} as const;
+
 export interface AudienceSelectionInput {
   dimension: AudienceDimension;
   /** @nullable */
@@ -627,6 +640,9 @@ export interface AudienceSelectionInput {
   /** @nullable */
   unresolvedLabel?: string | null;
   isPrimary: boolean;
+  provenance?: AudienceSelectionInputProvenance;
+  /** @nullable */
+  inheritedFromCampaignKey?: string | null;
   /** @nullable */
   rawRepresentativeTitle?: string | null;
   /**
@@ -636,14 +652,26 @@ export interface AudienceSelectionInput {
   estimatedAudienceCount?: number | null;
   /** @nullable */
   measurementBasis?: string | null;
+  /**
+     * Exact messaging cohort treatment version; current effective version is selected deterministically when omitted
+     * @nullable
+     */
+  treatmentId?: string | null;
 }
 
-export type AudienceSelection = AudienceSelectionInput & {
+export type AudienceSelection = AudienceSelectionInput & ({
   id: string;
   campaignKey: string;
   warningCodes: string[];
+  /** @nullable */
+  accountSizeRuleVersion?: string | null;
+  /** @nullable */
+  accountSizeRuleId?: string | null;
+  /** @nullable */
+  reviewRequestId?: string | null;
+  resolutionStatus?: string;
   createdAt: string;
-};
+});
 
 export type ProductRole = typeof ProductRole[keyof typeof ProductRole];
 
@@ -659,10 +687,21 @@ export const ProductRole = {
   internal_relevance: 'internal_relevance',
 } as const;
 
+export type ProductAssociationInputProvenance = typeof ProductAssociationInputProvenance[keyof typeof ProductAssociationInputProvenance];
+
+
+export const ProductAssociationInputProvenance = {
+  selected: 'selected',
+  inherited: 'inherited',
+} as const;
+
 export interface ProductAssociationInput {
   productValueId: string;
   role: ProductRole;
   isPrimary: boolean;
+  provenance?: ProductAssociationInputProvenance;
+  /** @nullable */
+  inheritedFromCampaignKey?: string | null;
 }
 
 export type ProductAssociation = ProductAssociationInput & {
@@ -670,6 +709,12 @@ export type ProductAssociation = ProductAssociationInput & {
   campaignKey: string;
   createdAt: string;
 };
+
+export interface CampaignCohortTreatment {
+  governedValueId: string;
+  treatmentId: string;
+  treatmentVersion: string;
+}
 
 /**
  * Exact integer amount in the currency minor unit; never floating point
@@ -1000,6 +1045,7 @@ export interface CampaignHistoryEvent {
 export type CampaignDetail = Campaign & {
   audiences: AudienceSelection[];
   products: ProductAssociation[];
+  cohortTreatments: CampaignCohortTreatment[];
   activities: CampaignActivityDetail[];
   costs: CampaignCostDetail[];
   planningPeriods: CampaignPlanningPeriod[];
@@ -1015,14 +1061,46 @@ export interface CampaignReadiness {
 export interface CampaignSubmissionInput {
   /** @minLength 1 */
   reason: string;
+  /** @minimum 1 */
+  rowVersion: number;
 }
 
 export interface AudiencePlanInput {
+  /** @minimum 1 */
+  rowVersion: number;
   selections: AudienceSelectionInput[];
 }
 
+export interface AudiencePlanResponse {
+  rowVersion: number;
+  selections: AudienceSelection[];
+}
+
 export interface ProductPlanInput {
+  /** @minimum 1 */
+  rowVersion: number;
   associations: ProductAssociationInput[];
+}
+
+export interface ProductPlanResponse {
+  rowVersion: number;
+  associations: ProductAssociation[];
+}
+
+export type CampaignReportingDimensionsAudienceItem = { [key: string]: unknown };
+
+export type CampaignReportingDimensionsProductsItem = { [key: string]: unknown };
+
+export type CampaignReportingDimensionsAuthoritativeCostsItem = { [key: string]: unknown };
+
+export interface CampaignReportingDimensions {
+  campaignCount: number;
+  audience: CampaignReportingDimensionsAudienceItem[];
+  products: CampaignReportingDimensionsProductsItem[];
+  cohorts: CampaignCohortTreatment[];
+  authoritativeCosts: CampaignReportingDimensionsAuthoritativeCostsItem[];
+  warningCount: number;
+  unresolvedCount: number;
 }
 
 export type CampaignActivityUpdate = CampaignActivityInput & {

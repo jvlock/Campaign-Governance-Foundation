@@ -66,10 +66,11 @@ export default function CampaignDetail() {
   const submitCampaign = useSubmitCampaign();
   
   const handleSubmit = async () => {
+    if (!campaign) return;
     try {
       await submitCampaign.mutateAsync({
         campaignKey: campaignId,
-        data: { reason: "Submitting for review" }
+        data: { reason: "Submitting for review", rowVersion: campaign.rowVersion }
       });
       queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
       queryClient.invalidateQueries({ queryKey: getListCampaignsQueryKey() });
@@ -104,11 +105,14 @@ export default function CampaignDetail() {
   const [selectedProduct, setSelectedProduct] = useState("");
 
   const handleAddAudience = async () => {
+    if (!campaign) return;
     try {
-      await replaceAudiences.mutateAsync({
+      const result = await replaceAudiences.mutateAsync({
         campaignKey: campaignId,
-        data: { selections: [{ dimension: "segment_family", governedValueId: selectedSegment, isPrimary: true }] }
+        data: { rowVersion: campaign.rowVersion, selections: [{ dimension: "segment_family", governedValueId: selectedSegment, isPrimary: true }] }
       });
+      queryClient.setQueryData<CampaignDetail>(getGetCampaignQueryKey(campaignId), (current) =>
+        current ? { ...current, rowVersion: result.rowVersion, audiences: result.selections } : current);
       queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
       setAudiencesOpen(false);
       toast({ title: "Audiences updated" });
@@ -118,11 +122,14 @@ export default function CampaignDetail() {
   };
 
   const handleAddProduct = async () => {
+    if (!campaign) return;
     try {
-      await replaceProducts.mutateAsync({
+      const result = await replaceProducts.mutateAsync({
         campaignKey: campaignId,
-        data: { associations: [{ productValueId: selectedProduct, role: "primary_solution", isPrimary: true }] }
+        data: { rowVersion: campaign.rowVersion, associations: [{ productValueId: selectedProduct, role: "primary_solution", isPrimary: true }] }
       });
+      queryClient.setQueryData<CampaignDetail>(getGetCampaignQueryKey(campaignId), (current) =>
+        current ? { ...current, rowVersion: result.rowVersion, products: result.associations } : current);
       queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
       setProductsOpen(false);
       toast({ title: "Products updated" });

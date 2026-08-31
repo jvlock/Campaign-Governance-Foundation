@@ -53,7 +53,6 @@ import {
   fiscalCalendarsTable,
   fiscalCalendarSnapshotsTable,
   fiscalPeriodsTable,
-  taxonomyUserRolesTable,
 } from "@workspace/db";
 import {
   activityAllocation,
@@ -64,9 +63,34 @@ import {
   type DatedPeriod,
 } from "../lib/campaign-domain";
 import { planningPeriodResponse } from "./campaigns";
+import { requireAdministrator, requireCampaignAccess } from "../lib/campaign-authorization";
 
 const router: IRouter = Router();
 router.use(requireMutationAuth);
+
+async function authorizeCampaignKey(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], campaignKey: string, mode: "view" | "mutate") {
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, campaignKey));
+  if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return undefined; }
+  return await requireCampaignAccess(req, res, campaign, mode) ? campaign : undefined;
+}
+
+async function authorizeCost(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], costId: string) {
+  const [cost] = await db.select().from(campaignCostsTable).where(eq(campaignCostsTable.id, costId));
+  if (!cost) { res.status(404).json({ error: "Resource not found" }); return undefined; }
+  return await authorizeCampaignKey(req, res, cost.campaignKey, "mutate") ? cost : undefined;
+}
+
+async function authorizePlanningPeriod(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], planningPeriodId: string) {
+  const [period] = await db.select().from(campaignPlanningPeriodsTable).where(eq(campaignPlanningPeriodsTable.id, planningPeriodId));
+  if (!period) { res.status(404).json({ error: "Resource not found" }); return undefined; }
+  return await authorizeCampaignKey(req, res, period.campaignKey, "mutate") ? period : undefined;
+}
+
+async function authorizeActivity(req: Parameters<typeof requireCampaignAccess>[0], res: Parameters<typeof requireCampaignAccess>[1], activityId: string) {
+  const [activity] = await db.select().from(campaignActivitiesTable).where(eq(campaignActivitiesTable.id, activityId));
+  if (!activity) { res.status(404).json({ error: "Resource not found" }); return undefined; }
+  return await authorizeCampaignKey(req, res, activity.campaignKey, "mutate") ? activity : undefined;
+}
 
 
 function costResponse(row: typeof campaignCostsTable.$inferSelect) {
@@ -78,6 +102,7 @@ router.post("/campaigns/:campaignKey/costs", async (req, res): Promise<void> => 
   const params = CreateCampaignCostParams.safeParse(req.params);
   const body = CreateCampaignCostBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid campaign cost" }); return; }
+  if (!await authorizeCampaignKey(req, res, params.data.campaignKey, "mutate")) return;
   try {
     if (parseMinor(body.data.authoritativeAmountMinor) < 0n) throw new Error("Campaign cost cannot be negative");
   } catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
@@ -114,6 +139,7 @@ router.patch("/costs/:costId", async (req, res): Promise<void> => {
   const params = UpdateCampaignCostParams.safeParse(req.params);
   const body = UpdateCampaignCostBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid campaign cost update" }); return; }
+  if (!await authorizeCost(req, res, params.data.costId)) return;
   try {
     if (parseMinor(body.data.authoritativeAmountMinor) < 0n) throw new Error("Campaign cost cannot be negative");
   } catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
@@ -151,6 +177,7 @@ router.put("/costs/:costId/dimensions", async (req, res): Promise<void> => {
   const params = ReplaceCampaignCostDimensionsParams.safeParse(req.params);
   const body = ReplaceCampaignCostDimensionsBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid cost-dimension plan" }); return; }
+  if (!await authorizeCost(req, res, params.data.costId)) return;
 
   const allocations = body.data.allocations;
   const pairKeys = allocations.map((item) => `${item.dimension}:${item.dimensionKey}`);
@@ -235,6 +262,7 @@ router.get("/fiscal-calendars/:calendarId/active-snapshot", async (req, res): Pr
 });
 
 router.post("/fiscal-calendars", async (req, res): Promise<void> => {
+  if (!await requireAdministrator(req, res)) return;
   const actorId = getAuditActor(req);
   const body = CreateFiscalCalendarBody.safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
@@ -247,6 +275,7 @@ router.post("/fiscal-calendars", async (req, res): Promise<void> => {
 });
 
 router.post("/fiscal-calendars/:calendarId/snapshots", async (req, res): Promise<void> => {
+  if (!await requireAdministrator(req, res)) return;
   const actorId = getAuditActor(req);
   const params = PublishFiscalCalendarSnapshotParams.safeParse(req.params);
   const body = PublishFiscalCalendarSnapshotBody.safeParse(req.body);
@@ -297,6 +326,7 @@ router.put("/campaigns/:campaignKey/budget", async (req, res): Promise<void> => 
   const params = SetCampaignBudgetParams.safeParse(req.params);
   const body = SetCampaignBudgetBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid campaign budget" }); return; }
+  if (!await authorizeCampaignKey(req, res, params.data.campaignKey, "mutate")) return;
   try {
     if (parseMinor(body.data.requestedMinor) < 0n || parseMinor(body.data.approvedMinor) < 0n) throw new Error("Budgets cannot be negative");
   } catch (error) {
@@ -344,6 +374,7 @@ router.post("/campaigns/:campaignKey/planning-periods/generate", async (req, res
   const params = GenerateCampaignPlanningPeriodsParams.safeParse(req.params);
   const body = GenerateCampaignPlanningPeriodsBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid period generation request" }); return; }
+  if (!await authorizeCampaignKey(req, res, params.data.campaignKey, "mutate")) return;
   const [[campaign], [budget]] = await Promise.all([
     db.select().from(campaignsTable).where(eq(campaignsTable.campaignKey, params.data.campaignKey)),
     db.select().from(campaignBudgetsTable).where(eq(campaignBudgetsTable.campaignKey, params.data.campaignKey)),
@@ -451,6 +482,7 @@ router.patch("/planning-periods/:planningPeriodId", async (req, res): Promise<vo
   const params = UpdateCampaignPlanningPeriodParams.safeParse(req.params);
   const body = UpdateCampaignPlanningPeriodBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid planning-period update" }); return; }
+  if (!await authorizePlanningPeriod(req, res, params.data.planningPeriodId)) return;
   try {
     [body.data.plannedMinor, body.data.committedMinor, body.data.actualMinor, body.data.forecastMinor]
       .forEach((value) => { if (parseMinor(value) < 0n) throw new Error("Spend values cannot be negative"); });
@@ -480,6 +512,7 @@ router.post("/planning-periods/:planningPeriodId/close", async (req, res): Promi
   const params = CloseCampaignPlanningPeriodParams.safeParse(req.params);
   const body = CloseCampaignPlanningPeriodBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid close request" }); return; }
+  if (!await authorizePlanningPeriod(req, res, params.data.planningPeriodId)) return;
   const row = await db.transaction(async (tx) => {
     const [updated] = await tx.update(campaignPlanningPeriodsTable).set({
       status: "closed",
@@ -503,18 +536,12 @@ router.post("/planning-periods/:planningPeriodId/reopen", async (req, res): Prom
   const params = ReopenCampaignPlanningPeriodParams.safeParse(req.params);
   const body = ReopenCampaignPlanningPeriodBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Reopening requires a reason and approver" }); return; }
+  if (!await authorizePlanningPeriod(req, res, params.data.planningPeriodId)) return;
+  if (!await requireAdministrator(req, res)) return;
 
   let approver = body.data.approvedBy;
   if (process.env.NODE_ENV === "production") {
-    if (!req.user) { res.status(401).json({ error: "Authentication required" }); return; }
-    const [authorization] = await db.select({ role: taxonomyUserRolesTable.role })
-      .from(taxonomyUserRolesTable)
-      .where(eq(taxonomyUserRolesTable.userId, req.user.id));
-    if (authorization?.role !== "administrator") {
-      res.status(403).json({ error: "Only an authorized finance administrator may reopen a period" });
-      return;
-    }
-    approver = req.user.email || req.user.id;
+    approver = req.user!.email || req.user!.id;
   }
 
   const row = await db.transaction(async (tx) => {
@@ -553,6 +580,7 @@ router.put("/activities/:activityId/period-allocations", async (req, res): Promi
   const params = AllocateActivityAcrossPeriodsParams.safeParse(req.params);
   const body = AllocateActivityAcrossPeriodsBody.safeParse(req.body);
   if (!params.success || !body.success) { res.status(400).json({ error: "Invalid activity allocation" }); return; }
+  if (!await authorizeActivity(req, res, params.data.activityId)) return;
 
   try {
     const rows = await db.transaction(async (tx) => {

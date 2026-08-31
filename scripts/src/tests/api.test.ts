@@ -11,7 +11,7 @@ import {
   taxonomyUserRolesTable,
   usersTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 const baseUrl = process.env.API_URL || "http://localhost:80/api";
 const baseOrigin = new URL(baseUrl).origin;
@@ -184,7 +184,10 @@ test("administrator can create and publish a conditional future-channel configur
 });
 
 test("configured activities enforce conditional and MCP rules while execution copy/version lineage remains stable", async () => {
-  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  const [product] = await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "product"),
+    eq(governedValuesTable.status, "active"),
+  )).limit(1);
   assert.ok(product);
   const suffix = crypto.randomUUID();
   const configResponse = await api("/activity-type-configurations", adminSid, {
@@ -215,7 +218,10 @@ test("configured activities enforce conditional and MCP rules while execution co
   assert.equal(campaignResponse.status, 201, await campaignResponse.clone().text());
   const campaign = await campaignResponse.json() as any;
   assert.equal((await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
-    method: "PUT", body: JSON.stringify({ associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }] }),
+    method: "PUT", body: JSON.stringify({
+      rowVersion: campaign.rowVersion,
+      associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }],
+    }),
   })).status, 200);
   const activityBase = {
     name: "Launch execution", deliveryStartDate: "2034-01-02", deliveryEndDate: "2034-01-10",
@@ -444,7 +450,10 @@ test("configured activities enforce conditional and MCP rules while execution co
 });
 
 test("activity allocations reconcile on create/update and lock only touched fiscal periods", async () => {
-  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  const [product] = await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "product"),
+    eq(governedValuesTable.status, "active"),
+  )).limit(1);
   assert.ok(product);
   const suffix = crypto.randomUUID();
   const calendarResponse = await api("/fiscal-calendars", undefined, {
@@ -471,7 +480,10 @@ test("activity allocations reconcile on create/update and lock only touched fisc
   assert.equal(campaignResponse.status, 201, await campaignResponse.clone().text());
   const campaign = await campaignResponse.json() as any;
   assert.equal((await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
-    method: "PUT", body: JSON.stringify({ associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }] }),
+    method: "PUT", body: JSON.stringify({
+      rowVersion: campaign.rowVersion,
+      associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }],
+    }),
   })).status, 200);
   assert.equal((await api(`/campaigns/${campaign.campaignKey}/budget`, undefined, {
     method: "PUT", body: JSON.stringify({
@@ -540,7 +552,10 @@ test("activity allocations reconcile on create/update and lock only touched fisc
 });
 
 test("activity creation rejects planning-period coverage gaps", async () => {
-  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  const [product] = await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "product"),
+    eq(governedValuesTable.status, "active"),
+  )).limit(1);
   assert.ok(product);
   const suffix = crypto.randomUUID();
   const calendar = await (await api("/fiscal-calendars", undefined, {
@@ -559,7 +574,13 @@ test("activity creation rejects planning-period coverage gaps", async () => {
   const campaign = await (await api("/campaigns", undefined, {
     method: "POST", body: JSON.stringify({ name: `Gap campaign ${suffix}`, campaignType: "integrated", relationshipType: "new", startDate: "2041-01-01", endDate: "2041-01-31" }),
   })).json() as any;
-  await api(`/campaigns/${campaign.campaignKey}/products`, undefined, { method: "PUT", body: JSON.stringify({ associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }] }) });
+  await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
+    method: "PUT",
+    body: JSON.stringify({
+      rowVersion: campaign.rowVersion,
+      associations: [{ productValueId: product.id, role: "primary_solution", isPrimary: true }],
+    }),
+  });
   await api(`/campaigns/${campaign.campaignKey}/budget`, undefined, { method: "PUT", body: JSON.stringify({ fiscalCalendarSnapshotId: snapshot.id, requestedMinor: "1", approvedMinor: "1", currency: "USD", currencyMinorUnits: 2, budgetOwner: "Test", costCenter: "TEST", fundingSource: "Test", allocationMethod: "even" }) });
   const fiscalPeriods = await db.select().from(fiscalPeriodsTable).where(eq(fiscalPeriodsTable.snapshotId, snapshot.id));
   await db.insert(campaignPlanningPeriodsTable).values(fiscalPeriods.map((period, index) => ({
@@ -682,9 +703,18 @@ test("import preview exposes the NA conflict and allows explicit resolution", as
 });
 
 test("campaign identity survives non-calendar multi-period budget planning with exact minor units", async () => {
-  const [segment] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "segment")).limit(1);
-  const [persona] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "persona")).limit(1);
-  const [product] = await db.select().from(governedValuesTable).where(eq(governedValuesTable.category, "product")).limit(1);
+  const [segment] = await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "segment"),
+    eq(governedValuesTable.status, "active"),
+  )).limit(1);
+  const [persona] = await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "persona"),
+    eq(governedValuesTable.status, "active"),
+  )).limit(1);
+  const [product] = await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "product"),
+    eq(governedValuesTable.status, "active"),
+  )).limit(1);
   assert.ok(segment && persona && product);
 
   const calendarResponse = await api("/fiscal-calendars", undefined, {
@@ -729,15 +759,16 @@ test("campaign identity survives non-calendar multi-period budget planning with 
 
   const audience = await api(`/campaigns/${campaign.campaignKey}/audiences`, undefined, {
     method: "PUT",
-    body: JSON.stringify({ selections: [
+    body: JSON.stringify({ rowVersion: campaign.rowVersion, selections: [
       { dimension: "segment_family", governedValueId: segment.id, isPrimary: true, estimatedAudienceCount: 2500 },
-      { dimension: "persona", governedValueId: persona.id, isPrimary: true, rawRepresentativeTitle: "Asset Owner CIO" },
+      { dimension: "persona", governedValueId: persona.id, isPrimary: false, rawRepresentativeTitle: "Asset Owner CIO" },
     ] }),
   });
   assert.equal(audience.status, 200, await audience.clone().text());
+  const audiencePlan = await audience.json() as any;
   const products = await api(`/campaigns/${campaign.campaignKey}/products`, undefined, {
     method: "PUT",
-    body: JSON.stringify({ associations: [
+    body: JSON.stringify({ rowVersion: audiencePlan.rowVersion, associations: [
       { productValueId: product.id, role: "primary_solution", isPrimary: true },
     ] }),
   });

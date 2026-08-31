@@ -71,6 +71,13 @@
       "when": 1787959256840,
       "tag": "0009_execution_delivery_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788176302369,
+      "tag": "0010_campaign_task6_governance",
+      "breakpoints": true
     }
   ]
 }

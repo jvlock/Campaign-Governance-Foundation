@@ -264,6 +264,12 @@ paths:
       responses:
         "201": { description: Draft created, content: { application/json: { schema: { $ref: "#/components/schemas/Campaign" } } } }
         "400": { description: Invalid, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } } }
+  /campaigns/reporting/dimensions:
+    get:
+      operationId: getCampaignReportingDimensions
+      tags: [campaigns]
+      responses:
+        "200": { description: Owner-scoped campaign reporting without audience/product cost multiplication, content: { application/json: { schema: { $ref: "#/components/schemas/CampaignReportingDimensions" } } } }
   /activity-type-configurations:
     get:
       operationId: listActivityTypeConfigurations
@@ -366,8 +372,9 @@ paths:
         - { name: campaignKey, in: path, required: true, schema: { type: string, format: uuid } }
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AudiencePlanInput" } } } }
       responses:
-        "200": { description: Audience plan, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AudienceSelection" } } } } }
+        "200": { description: Audience plan, content: { application/json: { schema: { $ref: "#/components/schemas/AudiencePlanResponse" } } } }
         "400": { description: Invalid }
+        "409": { description: Stale campaign version }
   /campaigns/{campaignKey}/products:
     put:
       operationId: replaceCampaignProducts
@@ -376,8 +383,9 @@ paths:
         - { name: campaignKey, in: path, required: true, schema: { type: string, format: uuid } }
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProductPlanInput" } } } }
       responses:
-        "200": { description: Product plan, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ProductAssociation" } } } } }
+        "200": { description: Product plan, content: { application/json: { schema: { $ref: "#/components/schemas/ProductPlanResponse" } } } }
         "400": { description: Invalid }
+        "409": { description: Stale campaign version }
   /campaigns/{campaignKey}/activities:
     post:
       operationId: createCampaignActivity
@@ -638,7 +646,7 @@ components:
       properties: { error: { type: string } }
     TaxonomyCategoryKey:
       type: string
-      enum: [strategic_program, segment, subsegment, account_size_tier, buying_group_function, persona, seniority_level, messaging_cohort, product, product_family, capability_solution, customer_need, campaign_type, business_objective, commercial_motion, marketing_objective, primary_conversion, journey_stage, region, subregion, country, market_cluster, language, channel, source, delivery_mechanism, platform, activity_type, creative_format, call_to_action, campaign_member_status_template, fiscal_calendar, fiscal_year, fiscal_quarter, fiscal_period, currency, cost_center]
+      enum: [strategic_program, segment, subsegment, account_size_tier, account_priority_tier, relationship, buying_group_function, persona, seniority_level, messaging_cohort, behavioral_cohort, audience_origin, product, product_family, capability_solution, customer_need, campaign_type, business_objective, commercial_motion, marketing_objective, primary_conversion, journey_stage, region, subregion, country, market_cluster, language, channel, source, delivery_mechanism, platform, activity_type, creative_format, call_to_action, campaign_member_status_template, fiscal_calendar, fiscal_year, fiscal_quarter, fiscal_period, currency, cost_center]
     GovernanceStatus:
       type: string
       enum: [draft, in_review, approved, active, inactive, superseded]
@@ -915,10 +923,11 @@ components:
       allOf:
         - { $ref: "#/components/schemas/Campaign" }
         - type: object
-          required: [audiences, products, activities, costs, planningPeriods, history]
+          required: [audiences, products, cohortTreatments, activities, costs, planningPeriods, history]
           properties:
             audiences: { type: array, items: { $ref: "#/components/schemas/AudienceSelection" } }
             products: { type: array, items: { $ref: "#/components/schemas/ProductAssociation" } }
+            cohortTreatments: { type: array, items: { $ref: "#/components/schemas/CampaignCohortTreatment" } }
             activities: { type: array, items: { $ref: "#/components/schemas/CampaignActivityDetail" } }
             costs: { type: array, items: { $ref: "#/components/schemas/CampaignCostDetail" } }
             planningPeriods: { type: array, items: { $ref: "#/components/schemas/CampaignPlanningPeriod" } }
@@ -943,9 +952,10 @@ components:
         probableDuplicates: { type: array, items: { $ref: "#/components/schemas/Campaign" } }
     CampaignSubmissionInput:
       type: object
-      required: [reason]
+      required: [reason, rowVersion]
       properties:
         reason: { type: string, minLength: 1 }
+        rowVersion: { type: integer, minimum: 1 }
     AudienceDimension:
       type: string
       enum: [segment_family, subsegment, account_size_tier, account_priority, relationship, buying_group_function, persona, seniority, messaging_cohort, behavioral_cohort, audience_origin, region, country, language, journey_stage]
@@ -957,14 +967,24 @@ components:
         governedValueId: { type: [string, "null"], format: uuid }
         unresolvedLabel: { type: [string, "null"] }
         isPrimary: { type: boolean }
+        provenance: { type: string, enum: [selected, inherited, unresolved], default: selected }
+        inheritedFromCampaignKey: { type: [string, "null"], format: uuid }
         rawRepresentativeTitle: { type: [string, "null"] }
         estimatedAudienceCount: { type: [integer, "null"], minimum: 0 }
         measurementBasis: { type: [string, "null"] }
+        treatmentId: { type: [string, "null"], format: uuid, description: Exact messaging cohort treatment version; current effective version is selected deterministically when omitted }
     AudiencePlanInput:
       type: object
-      required: [selections]
+      required: [rowVersion, selections]
       properties:
+        rowVersion: { type: integer, minimum: 1 }
         selections: { type: array, items: { $ref: "#/components/schemas/AudienceSelectionInput" } }
+    AudiencePlanResponse:
+      type: object
+      required: [rowVersion, selections]
+      properties:
+        rowVersion: { type: integer }
+        selections: { type: array, items: { $ref: "#/components/schemas/AudienceSelection" } }
     AudienceSelection:
       allOf:
         - { $ref: "#/components/schemas/AudienceSelectionInput" }
@@ -974,7 +994,18 @@ components:
             id: { type: string, format: uuid }
             campaignKey: { type: string, format: uuid }
             warningCodes: { type: array, items: { type: string } }
+            accountSizeRuleVersion: { type: [string, "null"] }
+            accountSizeRuleId: { type: [string, "null"], format: uuid }
+            reviewRequestId: { type: [string, "null"], format: uuid }
+            resolutionStatus: { type: string }
             createdAt: { type: string, format: date-time }
+    CampaignCohortTreatment:
+      type: object
+      required: [governedValueId, treatmentId, treatmentVersion]
+      properties:
+        governedValueId: { type: string, format: uuid }
+        treatmentId: { type: string, format: uuid }
+        treatmentVersion: { type: string }
     ProductRole:
       type: string
       enum: [primary_solution, supporting_capability, cross_sell_offer, upsell_offer, proof_point, content_data_source, cta_destination, internal_relevance]
@@ -985,11 +1016,20 @@ components:
         productValueId: { type: string, format: uuid }
         role: { $ref: "#/components/schemas/ProductRole" }
         isPrimary: { type: boolean }
+        provenance: { type: string, enum: [selected, inherited], default: selected }
+        inheritedFromCampaignKey: { type: [string, "null"], format: uuid }
     ProductPlanInput:
       type: object
-      required: [associations]
+      required: [rowVersion, associations]
       properties:
+        rowVersion: { type: integer, minimum: 1 }
         associations: { type: array, items: { $ref: "#/components/schemas/ProductAssociationInput" } }
+    ProductPlanResponse:
+      type: object
+      required: [rowVersion, associations]
+      properties:
+        rowVersion: { type: integer }
+        associations: { type: array, items: { $ref: "#/components/schemas/ProductAssociation" } }
     ProductAssociation:
       allOf:
         - { $ref: "#/components/schemas/ProductAssociationInput" }
@@ -999,6 +1039,17 @@ components:
             id: { type: string, format: uuid }
             campaignKey: { type: string, format: uuid }
             createdAt: { type: string, format: date-time }
+    CampaignReportingDimensions:
+      type: object
+      required: [campaignCount, audience, products, cohorts, authoritativeCosts, warningCount, unresolvedCount]
+      properties:
+        campaignCount: { type: integer }
+        audience: { type: array, items: { type: object, additionalProperties: true } }
+        products: { type: array, items: { type: object, additionalProperties: true } }
+        cohorts: { type: array, items: { $ref: "#/components/schemas/CampaignCohortTreatment" } }
+        authoritativeCosts: { type: array, items: { type: object, additionalProperties: true } }
+        warningCount: { type: integer }
+        unresolvedCount: { type: integer }
     CampaignActivityInput:
       type: object
       required: [name, deliveryStartDate, deliveryEndDate, authoritativeCostMinor, currency, productValueIds]

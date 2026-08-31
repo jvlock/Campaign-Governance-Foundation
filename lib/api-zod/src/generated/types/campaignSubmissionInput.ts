@@ -9,4 +9,6 @@
 export interface CampaignSubmissionInput {
   /** @minLength 1 */
   reason: string;
+  /** @minimum 1 */
+  rowVersion: number;
 }

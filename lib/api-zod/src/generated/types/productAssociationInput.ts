@@ -5,10 +5,14 @@
  * Campaign Governance API
  * OpenAPI spec version: 0.2.0
  */
+import type { ProductAssociationInputProvenance } from './productAssociationInputProvenance';
 import type { ProductRole } from './productRole';
 
 export interface ProductAssociationInput {
   productValueId: string;
   role: ProductRole;
   isPrimary: boolean;
+  provenance?: ProductAssociationInputProvenance;
+  /** @nullable */
+  inheritedFromCampaignKey?: string | null;
 }
