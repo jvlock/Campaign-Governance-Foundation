@@ -78,6 +78,20 @@
       "when": 1788176302369,
       "tag": "0010_campaign_task6_governance",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788184822111,
+      "tag": "0011_governed_value_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788201600000,
+      "tag": "0012_governed_value_canonical_source",
+      "breakpoints": true
     }
   ]
 }

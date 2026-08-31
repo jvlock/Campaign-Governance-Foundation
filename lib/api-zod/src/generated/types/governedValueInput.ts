@@ -5,6 +5,7 @@
  * Campaign Governance API
  * OpenAPI spec version: 0.2.0
  */
+import type { GovernedValueInputMetadata } from './governedValueInputMetadata';
 import type { TaxonomyCategoryKey } from './taxonomyCategoryKey';
 
 export interface GovernedValueInput {
@@ -29,4 +30,5 @@ export interface GovernedValueInput {
   legacyCodes?: string[];
   /** @nullable */
   measurementRule?: string | null;
+  metadata?: GovernedValueInputMetadata;
 }

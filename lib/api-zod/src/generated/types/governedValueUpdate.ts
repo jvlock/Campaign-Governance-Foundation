@@ -5,6 +5,7 @@
  * Campaign Governance API
  * OpenAPI spec version: 0.2.0
  */
+import type { GovernedValueUpdateMetadata } from './governedValueUpdateMetadata';
 
 export interface GovernedValueUpdate {
   /** @minLength 1 */
@@ -22,5 +23,6 @@ export interface GovernedValueUpdate {
   legacyCodes?: string[];
   /** @nullable */
   measurementRule?: string | null;
+  metadata?: GovernedValueUpdateMetadata;
   rowVersion: number;
 }

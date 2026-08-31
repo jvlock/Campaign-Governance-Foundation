@@ -1,0 +1,1 @@
+ALTER TABLE "governed_values" ADD COLUMN IF NOT EXISTS "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL;

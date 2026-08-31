@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { GovernanceStatus } from './governanceStatus';
+import type { GovernedValueMetadata } from './governedValueMetadata';
 import type { TaxonomyCategoryKey } from './taxonomyCategoryKey';
 
 export interface GovernedValue {
@@ -28,6 +29,7 @@ export interface GovernedValue {
   legacyCodes: string[];
   /** @nullable */
   measurementRule?: string | null;
+  metadata?: GovernedValueMetadata;
   usageCount: number;
   rowVersion: number;
   createdAt: Date;

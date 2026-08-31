@@ -9,6 +9,7 @@ import {
   taxonomyCategoriesTable,
   messagingCohortVersionsTable,
 } from "@workspace/db";
+import { guideCategoryDefinitions, loadCanonicalUtmGuide, UTM_GUIDE_SOURCE, type GuideOption } from "./utm-taxonomy-catalog";
 
 const categoryNames: Array<[string, string, boolean, boolean]> = [
   ["strategic_program", "Strategic program", true, false],
@@ -52,6 +53,7 @@ const categoryNames: Array<[string, string, boolean, boolean]> = [
   ["fiscal_period", "Fiscal period", true, false],
   ["currency", "Currency", true, false],
   ["cost_center", "Cost center", true, false],
+  ...guideCategoryDefinitions.map(([key, label, supportsParent]) => [key, label, supportsParent, false] as [string, string, boolean, boolean]),
 ];
 
 const valueSeeds: Array<{
@@ -154,6 +156,9 @@ const cohortSeeds = [
   },
 ] as const;
 
+let seededGuideValueCount = 0;
+let seededGuideCategoryCount = 0;
+
 async function seed() {
   await db.transaction(async (tx) => {
     for (const [key, displayName, supportsParent, supportsMeasurementRule] of categoryNames) {
@@ -201,6 +206,110 @@ async function seed() {
           updatedAt: new Date(),
         },
       });
+    }
+
+    const guide = loadCanonicalUtmGuide();
+    seededGuideCategoryCount = guideCategoryDefinitions.length;
+    type GuideSeed = { category: string; code: string; name: string; parentCode?: string; metadata?: Record<string, unknown> };
+    const guideSeeds: GuideSeed[] = [];
+    const addOptions = (category: string, values: unknown) => {
+      for (const option of values as Array<GuideOption | string>) {
+        const code = typeof option === "string" ? option : option.v;
+        const name = typeof option === "string" ? option : option.l;
+        guideSeeds.push({ category, code, name });
+      }
+    };
+    guide.productLines.forEach((item) => guideSeeds.push({ category: "product_line", code: item.v, name: item.l }));
+    for (const [product, campaigns] of Object.entries(guide.hierarchy)) {
+      for (const [campaign, subcampaigns] of Object.entries(campaigns)) {
+        guideSeeds.push({ category: "campaign_shortcode", code: campaign, name: guide.campaignLabels[product]?.[campaign] ?? campaign, parentCode: product });
+        for (const subcampaign of subcampaigns) guideSeeds.push({
+          category: "subcampaign", code: subcampaign,
+          name: guide.subCampaignLabels[product]?.[campaign]?.[subcampaign] ?? subcampaign,
+          parentCode: `${product}/${campaign}`,
+        });
+      }
+    }
+    const propertyCategories: Record<string, string> = {
+      adsSubtype: "ads_subtype", objectives: "utm_objective", audience: "audience", audienceSegment: "audience_segment",
+      regions: "utm_region", creativeType: "creative_type", imgSize: "image_size", gifSize: "gif_size", videoLength: "video_length",
+      contentType: "content_type", creativeCta: "creative_cta", contentOrder: "content_order", emailType: "email_type",
+      emailTypePartner: "partner_email_type", owner: "owner", captureSource: "capture_source", nlVersion: "newsletter_version",
+      linkPosition: "link_position", autoSequence: "nurture_sequence", formInterests: "form_interest", formNewsletters: "form_newsletter",
+      displayPartners: "display_partner", appSources: "app_source",
+    };
+    for (const [property, category] of Object.entries(propertyCategories)) addOptions(category, guide[property]);
+    guide.channels.forEach((channel) => guideSeeds.push({
+      category: "channel", code: channel.id, name: channel.name,
+      metadata: { ...channel, code: channel.id },
+    }));
+    seededGuideValueCount = guideSeeds.length;
+    const codeCount = new Map<string, number>();
+    guideSeeds.forEach(({ code }) => codeCount.set(code, (codeCount.get(code) ?? 0) + 1));
+    const guideKeys = new Map<GuideSeed, string>();
+    const insertedGuideKeys = new Set<string>();
+    // Snapshot before guide inserts: an existing guide row is authoritative.
+    // In particular, never reset a steward's label, lifecycle, metadata, or
+    // parent relationship on an idempotent seed run.
+    const existingGuideRows = await tx.select().from(governedValuesTable);
+    const existingByKey = new Map(existingGuideRows.map((row) => [row.stableKey, row]));
+    for (const seed of guideSeeds) {
+      const canonicalIdentity = `${seed.category}:${seed.parentCode ?? "root"}:${seed.code}`;
+      const preferredKey = codeCount.get(seed.code) === 1
+        ? seed.code
+        : `${seed.category}:${seed.parentCode ? `${seed.parentCode}:` : ""}${seed.code}`;
+      const existingPreferred = existingByKey.get(preferredKey);
+      const priorGuideRow = existingGuideRows.find((row) => row.canonicalSourceKey === canonicalIdentity)
+        ?? (existingPreferred?.source === UTM_GUIDE_SOURCE
+          ? existingPreferred
+          : undefined)
+        ?? (codeCount.get(seed.code) === 1
+          ? existingGuideRows.find((row) => row.source === UTM_GUIDE_SOURCE
+            && row.category === seed.category
+            && (row.metadata as { code?: string }).code === seed.code)
+          : undefined);
+      // A third-party row may legitimately own the unqualified code. Preserve
+      // it and give this guide record a deterministic reserved namespace.
+      let stableKey = priorGuideRow?.stableKey
+        ?? (existingPreferred ? `utm-guide:${seed.category}:${seed.parentCode ?? "root"}:${seed.code}` : preferredKey);
+      let collision = existingByKey.get(stableKey);
+      let suffix = 2;
+      while (!priorGuideRow && collision) {
+        stableKey = `utm-guide:${seed.category}:${seed.parentCode ?? "root"}:${seed.code}:${suffix++}`;
+        collision = existingByKey.get(stableKey);
+      }
+      guideKeys.set(seed, stableKey);
+      if (priorGuideRow) {
+        if (priorGuideRow.canonicalSourceKey !== canonicalIdentity) {
+          await tx.update(governedValuesTable)
+            .set({ canonicalSourceKey: canonicalIdentity })
+            .where(eq(governedValuesTable.id, priorGuideRow.id));
+        }
+        continue;
+      }
+      const [inserted] = await tx.insert(governedValuesTable).values({
+        stableKey, category: seed.category, displayName: seed.name,
+        definition: `Canonical ${seed.category.replaceAll("_", " ")} from the MSCI UTM Guide.`,
+        status: "active", effectiveStart: "2026-08-28", taxonomyVersion: "msci-utm-guide-public-3",
+        source: UTM_GUIDE_SOURCE, owner: "Marketing Operations Governance Council",
+        canonicalSourceKey: canonicalIdentity,
+        legacyCodes: [], metadata: { code: seed.code, ...(seed.metadata ?? {}) },
+        createdBy: "system-seed", updatedBy: "system-seed",
+      }).returning({ stableKey: governedValuesTable.stableKey });
+      if (inserted) {
+        insertedGuideKeys.add(inserted.stableKey);
+      }
+    }
+    const canonicalRows = await tx.select().from(governedValuesTable);
+    const canonicalByKey = new Map(canonicalRows.map((row) => [row.stableKey, row]));
+    for (const seed of guideSeeds) {
+      if (!seed.parentCode) continue;
+      const parentCategory = seed.category === "campaign_shortcode" ? "product_line" : "campaign_shortcode";
+      const parent = guideSeeds.find((candidate) => candidate.category === parentCategory
+        && (parentCategory === "product_line" ? candidate.code === seed.parentCode : `${candidate.parentCode}/${candidate.code}` === seed.parentCode));
+      const row = canonicalByKey.get(guideKeys.get(seed)!);
+      if (row && parent && insertedGuideKeys.has(row.stableKey)) await tx.update(governedValuesTable).set({ parentId: canonicalByKey.get(guideKeys.get(parent)!)?.id ?? null })
+        .where(eq(governedValuesTable.id, row.id));
     }
 
     const rows = await tx.select().from(governedValuesTable);
@@ -290,7 +399,7 @@ async function seed() {
 
 seed()
   .then(() => {
-    console.log(`Seeded ${categoryNames.length} categories and ${valueSeeds.length} active governed values.`);
+    console.log(`Seeded ${categoryNames.length} categories, ${valueSeeds.length} baseline values, and ${seededGuideCategoryCount} guide categories / ${seededGuideValueCount} canonical guide values.`);
     process.exit(0);
   })
   .catch((error) => {

@@ -105,6 +105,8 @@ const parentCategories: Record<string, string> = {
   fiscal_quarter: "fiscal_year",
   fiscal_period: "fiscal_quarter",
   campaign_member_status_template: "activity_type",
+  campaign_shortcode: "product_line",
+  subcampaign: "campaign_shortcode",
 };
 
 async function validateCategoryParent(category: string, parentId: string | null | undefined, valueId?: string) {
@@ -161,6 +163,13 @@ router.get("/taxonomy/values", async (req, res): Promise<void> => {
     return;
   }
   const filters = [];
+  // Test fixtures are retained for referential integrity but never pollute
+  // ordinary taxonomy selection lists.
+  if (parsed.data.includeTestData !== true) {
+    filters.push(sql`COALESCE(${governedValuesTable.metadata}->>'isTestData', 'false') <> 'true'`);
+    filters.push(sql`${governedValuesTable.stableKey} !~* '^(TEST_|PUBLIC_|task14-channel)'`);
+    filters.push(sql`${governedValuesTable.source} NOT IN ('Automated test', 'Test', 'browser-admin-test')`);
+  }
   if (parsed.data.category) filters.push(eq(governedValuesTable.category, parsed.data.category));
   if (parsed.data.status) filters.push(eq(governedValuesTable.status, parsed.data.status));
   if (parsed.data.parentId) filters.push(eq(governedValuesTable.parentId, parsed.data.parentId));

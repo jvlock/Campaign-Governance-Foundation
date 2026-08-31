@@ -38,6 +38,10 @@ export const governedValuesTable = pgTable("governed_values", {
   supersededById: uuid("superseded_by_id"),
   legacyCodes: text("legacy_codes").array().notNull().default(sql`ARRAY[]::text[]`),
   measurementRule: text("measurement_rule"),
+  /** Immutable seed identity; intentionally excluded from the public API. */
+  canonicalSourceKey: text("canonical_source_key").unique(),
+  /** Structured source attributes (for example channel UTM capabilities). */
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
   usageCount: integer("usage_count").notNull().default(0),
   rowVersion: integer("row_version").notNull().default(1),
   createdBy: text("created_by").notNull(),

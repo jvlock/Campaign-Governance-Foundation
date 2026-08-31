@@ -19,10 +19,7 @@ import {
 } from "lucide-react";
 import { 
   Card, 
-  CardContent, 
   CardHeader, 
-  CardTitle,
-  CardDescription
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,7 +76,6 @@ function TaxonomyListContent() {
   const [activeCategory, setActiveCategory] = useState<TaxonomyCategoryKey | "all">("all");
   const [activeStatus, setActiveStatus] = useState<GovernanceStatus | "all">("all");
   const [search, setSearch] = useState("");
-
   const { data: categories, isLoading: isLoadingCategories } = useListTaxonomyCategories();
   
   const { data: values, isLoading: isLoadingValues } = useListGovernedValues({
@@ -93,24 +89,24 @@ function TaxonomyListContent() {
       <TaxonomyHeader />
 
       <Card className="shadow-sm overflow-hidden border-border">
-        <CardHeader className="bg-muted/30 border-b pb-4 pt-6 px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+        <CardHeader className="bg-muted/20 border-b pb-4 pt-5 px-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
                   type="search"
                   placeholder="Search values..." 
-                  className="pl-9 h-10 bg-background"
+                  className="pl-9 h-9 bg-background text-sm"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
               <Select value={activeCategory} onValueChange={(v) => setActiveCategory(v as any)}>
-                <SelectTrigger className="w-[180px] h-10 bg-background">
+                <SelectTrigger className="w-[200px] h-9 bg-background text-sm">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="all">All Categories</SelectItem>
                   {categories?.map(c => (
                     <SelectItem key={c.key} value={c.key}>{c.displayName}</SelectItem>
@@ -118,7 +114,7 @@ function TaxonomyListContent() {
                 </SelectContent>
               </Select>
               <Select value={activeStatus} onValueChange={(v) => setActiveStatus(v as any)}>
-                <SelectTrigger className="w-[140px] h-10 bg-background">
+                <SelectTrigger className="w-[150px] h-9 bg-background text-sm">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
@@ -131,10 +127,11 @@ function TaxonomyListContent() {
                   <SelectItem value="superseded">Superseded</SelectItem>
                 </SelectContent>
               </Select>
+
             </div>
 
             {access.canPropose && (
-              <Button asChild className="w-full sm:w-auto gap-2">
+              <Button asChild size="sm" className="w-full lg:w-auto gap-1.5 h-9 shrink-0">
                 <Link href="/taxonomy/new">
                   <Plus className="h-4 w-4" />
                   New Value
@@ -147,29 +144,29 @@ function TaxonomyListContent() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/10 hover:bg-muted/10">
-                <TableHead className="w-[180px] pl-6">Stable Key</TableHead>
-                <TableHead>Value / Definition</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Version</TableHead>
-                <TableHead className="w-[140px]">Status</TableHead>
-                <TableHead className="w-[80px] text-right pr-6">Actions</TableHead>
+                <TableHead className="w-[160px] pl-6 font-semibold">Stable Key</TableHead>
+                <TableHead className="font-semibold">Value / Definition</TableHead>
+                <TableHead className="w-[180px] font-semibold">Category</TableHead>
+                <TableHead className="w-[100px] font-semibold">Version</TableHead>
+                <TableHead className="w-[130px] font-semibold">Status</TableHead>
+                <TableHead className="w-[80px] text-right pr-6 font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="text-sm">
               {isLoadingValues ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell className="pl-6"><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell>
+                    <TableCell className="pl-6 py-3"><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell className="py-3">
                       <div className="flex flex-col gap-1.5">
-                        <Skeleton className="h-5 w-48" />
-                        <Skeleton className="h-3 w-64" />
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-3 w-56" />
                       </div>
                     </TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
-                    <TableCell className="pr-6 text-right"><Skeleton className="h-8 w-8 ml-auto rounded-md" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell className="py-3"><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                    <TableCell className="pr-6 py-3 text-right"><Skeleton className="h-8 w-8 ml-auto rounded-md" /></TableCell>
                   </TableRow>
                 ))
               ) : values && values.length > 0 ? (
@@ -179,50 +176,52 @@ function TaxonomyListContent() {
                   const cat = categories?.find(c => c.key === val.category);
                   
                   return (
-                    <TableRow key={val.id} className="group">
-                      <TableCell className="font-mono text-xs font-medium text-muted-foreground pl-6">
-                        {val.stableKey}
+                    <TableRow key={val.id} className="group hover:bg-muted/5 transition-colors">
+                      <TableCell className="py-2.5 pl-6">
+                        <span className="font-mono text-xs font-medium text-muted-foreground">{val.stableKey}</span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col max-w-[400px]">
+                      <TableCell className="py-2.5">
+                        <div className="flex flex-col max-w-[450px]">
                           <span className="font-medium text-foreground">{val.displayName}</span>
                           <span className="text-xs text-muted-foreground truncate" title={val.definition}>
                             {val.definition}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="py-2.5 text-xs font-medium text-muted-foreground">
                         {cat?.displayName || val.category}
                       </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">
-                        v{val.taxonomyVersion}
+                      <TableCell className="py-2.5">
+                        <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                          v{val.taxonomyVersion}
+                        </span>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn("capitalize px-2 py-0.5 h-6 font-medium shadow-none", statusConf.bg)}>
-                          <StatusIcon className="mr-1.5 h-3 w-3" />
+                      <TableCell className="py-2.5">
+                        <Badge variant="outline" className={cn("capitalize px-2 py-0 h-5 text-[10px] font-medium shadow-none inline-flex items-center", statusConf.bg)}>
+                          <StatusIcon className="mr-1 h-2.5 w-2.5" />
                           {val.status.replace("_", " ")}
                         </Badge>
                       </TableCell>
-                      <TableCell className="pr-6 text-right">
+                      <TableCell className="py-2.5 pr-6 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 transition-colors">
+                              <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-xs font-medium">Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild className="cursor-pointer">
+                            <DropdownMenuItem asChild className="cursor-pointer text-xs">
                               <Link href={`/taxonomy/${val.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
+                                <Eye className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                                 View Details
                               </Link>
                             </DropdownMenuItem>
                             {access.canPropose && (
-                              <DropdownMenuItem asChild className="cursor-pointer">
+                              <DropdownMenuItem asChild className="cursor-pointer text-xs">
                                 <Link href={`/taxonomy/${val.id}?edit=true`}>
-                                  <Pencil className="mr-2 h-4 w-4" />
+                                  <Pencil className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                                   Edit Value
                                 </Link>
                               </DropdownMenuItem>
@@ -237,8 +236,9 @@ function TaxonomyListContent() {
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <Archive className="h-8 w-8 text-muted-foreground/50" />
-                      <p>No governed values found matching your criteria.</p>
+                      <Archive className="h-8 w-8 text-muted-foreground/40" />
+                      <p className="text-sm font-medium">No governed values found</p>
+                      <p className="text-xs text-muted-foreground max-w-sm">Adjust your filters or search query to find taxonomy values.</p>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -112,6 +112,7 @@ paths:
         - { name: status, in: query, schema: { $ref: "#/components/schemas/GovernanceStatus" } }
         - { name: search, in: query, schema: { type: string } }
         - { name: parentId, in: query, schema: { type: string } }
+        - { name: includeTestData, in: query, schema: { type: boolean, default: false } }
       responses:
         "200": { description: Governed values, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/GovernedValue" } } } } }
     post:
@@ -646,7 +647,7 @@ components:
       properties: { error: { type: string } }
     TaxonomyCategoryKey:
       type: string
-      enum: [strategic_program, segment, subsegment, account_size_tier, account_priority_tier, relationship, buying_group_function, persona, seniority_level, messaging_cohort, behavioral_cohort, audience_origin, product, product_family, capability_solution, customer_need, campaign_type, business_objective, commercial_motion, marketing_objective, primary_conversion, journey_stage, region, subregion, country, market_cluster, language, channel, source, delivery_mechanism, platform, activity_type, creative_format, call_to_action, campaign_member_status_template, fiscal_calendar, fiscal_year, fiscal_quarter, fiscal_period, currency, cost_center]
+      enum: [strategic_program, segment, subsegment, account_size_tier, account_priority_tier, relationship, buying_group_function, persona, seniority_level, messaging_cohort, behavioral_cohort, audience_origin, product, product_family, capability_solution, customer_need, campaign_type, business_objective, commercial_motion, marketing_objective, primary_conversion, journey_stage, region, subregion, country, market_cluster, language, channel, source, delivery_mechanism, platform, activity_type, creative_format, call_to_action, campaign_member_status_template, fiscal_calendar, fiscal_year, fiscal_quarter, fiscal_period, currency, cost_center, product_line, campaign_shortcode, subcampaign, ads_subtype, utm_objective, audience, audience_segment, utm_region, creative_type, image_size, gif_size, video_length, content_type, creative_cta, content_order, email_type, partner_email_type, owner, capture_source, newsletter_version, link_position, nurture_sequence, form_interest, form_newsletter, display_partner, app_source]
     GovernanceStatus:
       type: string
       enum: [draft, in_review, approved, active, inactive, superseded]
@@ -677,6 +678,7 @@ components:
         supersededById: { type: [string, "null"] }
         legacyCodes: { type: array, items: { type: string } }
         measurementRule: { type: [string, "null"] }
+        metadata: { type: object, additionalProperties: true }
         usageCount: { type: number }
         rowVersion: { type: number }
         createdAt: { type: string, format: date-time }
@@ -705,6 +707,7 @@ components:
         parentId: { type: [string, "null"] }
         legacyCodes: { type: array, items: { type: string } }
         measurementRule: { type: [string, "null"] }
+        metadata: { type: object, additionalProperties: true }
     GovernedValueUpdate:
       type: object
       required: [displayName, definition, effectiveStart, taxonomyVersion, source, owner, rowVersion]
@@ -719,6 +722,7 @@ components:
         parentId: { type: [string, "null"] }
         legacyCodes: { type: array, items: { type: string } }
         measurementRule: { type: [string, "null"] }
+        metadata: { type: object, additionalProperties: true }
         rowVersion: { type: number }
     GovernanceTransitionInput:
       type: object

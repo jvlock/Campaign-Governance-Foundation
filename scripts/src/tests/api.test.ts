@@ -8,10 +8,12 @@ import {
   fiscalPeriodsTable,
   governedValuesTable,
   sessionsTable,
+  taxonomyAuditEventsTable,
+  taxonomyReviewRequestsTable,
   taxonomyUserRolesTable,
   usersTable,
 } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 const baseUrl = process.env.API_URL || "http://localhost:80/api";
 const baseOrigin = new URL(baseUrl).origin;
@@ -23,6 +25,14 @@ const adminSid = `test-admin-${crypto.randomUUID()}`;
 const readerSid = `test-reader-${crypto.randomUUID()}`;
 const scopedSid = `test-scoped-${crypto.randomUUID()}`;
 const logoutSid = `test-logout-${crypto.randomUUID()}`;
+const createdGovernedValueIds = new Set<string>();
+const createdReviewRequestIds = new Set<string>();
+
+async function trackGovernedValue(response: Response) {
+  const value = await response.json() as { id: string };
+  createdGovernedValueIds.add(value.id);
+  return value;
+}
 
 async function installActor(userId: string, sid: string, role: string, categories: string[] = []) {
   const user = {
@@ -62,6 +72,17 @@ test.before(async () => {
   await installActor(logoutUserId, logoutSid, "reader");
 });
 
+test.after(async () => {
+  const valueIds = [...createdGovernedValueIds];
+  if (valueIds.length) {
+    await db.delete(taxonomyAuditEventsTable).where(sql`${taxonomyAuditEventsTable.valueId} = ANY(${valueIds})`);
+    await db.delete(governedValuesTable).where(sql`${governedValuesTable.id} = ANY(${valueIds})`);
+  }
+  const reviewIds = [...createdReviewRequestIds];
+  if (reviewIds.length) await db.delete(taxonomyReviewRequestsTable)
+    .where(sql`${taxonomyReviewRequestsTable.id} = ANY(${reviewIds})`);
+});
+
 test("health remains public and database-aware", async () => {
   const response = await api("/healthz");
   assert.equal(response.status, 200);
@@ -93,9 +114,38 @@ test("taxonomy administration is publicly accessible, including mutations", asyn
       taxonomyVersion: "test",
       source: "Test",
       owner: "Test",
+      metadata: { isTestData: true },
     }),
   });
   assert.equal(created.status, 201, await created.clone().text());
+  await trackGovernedValue(created);
+});
+
+test("taxonomy metadata round-trips and normal lists hide test fixtures", async () => {
+  const createdResponse = await api("/taxonomy/values", adminSid, {
+    method: "POST", body: JSON.stringify({
+      stableKey: `TEST_METADATA_${crypto.randomUUID().replaceAll("-", "")}`, category: "segment",
+      displayName: "Metadata fixture", definition: "Tests metadata serialization.", effectiveStart: "2026-08-28",
+      taxonomyVersion: "test-1", source: "Automated test", owner: "Test owner",
+      metadata: { isTestData: true, code: "fixture", nested: { preserved: true } },
+    }),
+  });
+  assert.equal(createdResponse.status, 201, await createdResponse.clone().text());
+  const created = await trackGovernedValue(createdResponse) as any;
+  const normal = await (await api("/taxonomy/values?category=segment")).json() as any[];
+  assert.ok(!normal.some((value) => value.id === created.id));
+  const diagnostics = await (await api("/taxonomy/values?category=segment&includeTestData=true")).json() as any[];
+  assert.equal(diagnostics.find((value) => value.id === created.id).metadata.nested.preserved, true);
+  const update = await api(`/taxonomy/values/${created.id}`, adminSid, {
+    method: "PATCH", body: JSON.stringify({
+      displayName: created.displayName, definition: created.definition, effectiveStart: created.effectiveStart,
+      effectiveEnd: null, taxonomyVersion: created.taxonomyVersion, source: created.source, owner: created.owner,
+      parentId: null, legacyCodes: [], measurementRule: null, rowVersion: created.rowVersion,
+      metadata: { isTestData: true, code: "fixture-updated" },
+    }),
+  });
+  assert.equal(update.status, 200, await update.clone().text());
+  assert.equal((await update.json() as any).metadata.code, "fixture-updated");
 });
 
 test("OIDC login and logout reject backslash return-path escapes", async () => {
@@ -124,6 +174,7 @@ test("public users can create review requests in any category", async () => {
     }),
   });
   assert.equal(response.status, 201, await response.clone().text());
+  createdReviewRequestIds.add((await response.json() as { id: string }).id);
 });
 
 test("administrator can add multiple categories without code changes", async () => {
@@ -140,9 +191,11 @@ test("administrator can add multiple categories without code changes", async () 
         taxonomyVersion: "test-1",
         source: "Automated test",
         owner: "Test owner",
+        metadata: { isTestData: true },
       }),
     });
     assert.equal(response.status, 201, await response.clone().text());
+    await trackGovernedValue(response);
   }
 });
 
@@ -278,21 +331,11 @@ test("configured activities enforce conditional and MCP rules while execution co
   assert.equal(persistedActivity.configuration.id, config.id);
   assert.equal(persistedActivity.executions.length, 3);
 
-  const mcpChannelResponse = await api("/taxonomy/values", adminSid, {
-    method: "POST",
-    body: JSON.stringify({
-      stableKey: `TEST_MCP_CHANNEL_${suffix.replaceAll("-", "")}`,
-      category: "channel",
-      displayName: "MCP",
-      definition: "Governed MCP channel for policy enforcement testing.",
-      effectiveStart: "2026-08-28",
-      taxonomyVersion: "test-1",
-      source: "Automated test",
-      owner: "Test owner",
-    }),
-  });
-  assert.equal(mcpChannelResponse.status, 201, await mcpChannelResponse.clone().text());
-  const mcpChannel = await mcpChannelResponse.json() as any;
+  const mcpChannel = (await db.select().from(governedValuesTable).where(and(
+    eq(governedValuesTable.category, "channel"),
+    eq(governedValuesTable.status, "active"),
+  ))).find((value) => (value.metadata as { code?: string }).code === "mcp");
+  assert.ok(mcpChannel, "Canonical guide MCP channel must be seeded");
   const unsafeChannelConfig = await api("/activity-type-configurations", adminSid, {
     method: "POST",
     body: JSON.stringify({
@@ -614,10 +657,11 @@ test("rename preserves stable key, rejects stale updates, records history, and p
       taxonomyVersion: "test-1",
       source: "Automated test",
       owner: "Test owner",
+      metadata: { isTestData: true },
     }),
   });
   assert.equal(create.status, 201, await create.clone().text());
-  const created = await create.json() as any;
+  const created = await trackGovernedValue(create) as any;
   const updateBody = {
     displayName: "Renamed label",
     definition: "Updated governed definition.",
@@ -661,9 +705,10 @@ test("legal lifecycle transitions activate a value and block direct deletion", a
       taxonomyVersion: "test-1",
       source: "Automated test",
       owner: "Test owner",
+      metadata: { isTestData: true },
     }),
   });
-  let value = await create.json() as any;
+  let value = await trackGovernedValue(create) as any;
   for (const action of ["submit_review", "approve", "activate"]) {
     const response = await api(`/taxonomy/values/${value.id}/transition`, adminSid, {
       method: "POST",

@@ -119,12 +119,12 @@ export const GetTaxonomyAccessResponse = zod.object({
   "canReview": zod.boolean(),
   "canActivate": zod.boolean(),
   "canAdminister": zod.boolean(),
-  "categories": zod.array(zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']))
+  "categories": zod.array(zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']))
 })
 
 
 export const ListTaxonomyCategoriesResponseItem = zod.object({
-  "key": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "key": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string(),
   "supportsParent": zod.boolean(),
   "supportsMeasurementRule": zod.boolean()
@@ -132,17 +132,20 @@ export const ListTaxonomyCategoriesResponseItem = zod.object({
 export const ListTaxonomyCategoriesResponse = zod.array(ListTaxonomyCategoriesResponseItem)
 
 
+export const listGovernedValuesQueryIncludeTestDataDefault = false;
+
 export const ListGovernedValuesQueryParams = zod.object({
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']).optional(),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']).optional(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']).optional(),
   "search": zod.coerce.string().optional(),
-  "parentId": zod.coerce.string().optional()
+  "parentId": zod.coerce.string().optional(),
+  "includeTestData": zod.coerce.boolean().default(listGovernedValuesQueryIncludeTestDataDefault)
 })
 
 export const ListGovernedValuesResponseItem = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -155,6 +158,7 @@ export const ListGovernedValuesResponseItem = zod.object({
   "supersededById": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()),
   "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "usageCount": zod.number(),
   "rowVersion": zod.number(),
   "createdAt": zod.coerce.date(),
@@ -174,7 +178,7 @@ export const createGovernedValueBodyStableKeyMin = 3;
 
 export const CreateGovernedValueBody = zod.object({
   "stableKey": zod.string().min(createGovernedValueBodyStableKeyMin),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string().min(1),
   "definition": zod.string().min(1),
   "effectiveStart": zod.string(),
@@ -184,13 +188,14 @@ export const CreateGovernedValueBody = zod.object({
   "owner": zod.string().min(1),
   "parentId": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()).optional(),
-  "measurementRule": zod.string().nullish()
+  "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 export const CreateGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -203,6 +208,7 @@ export const CreateGovernedValueResponse = zod.object({
   "supersededById": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()),
   "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "usageCount": zod.number(),
   "rowVersion": zod.number(),
   "createdAt": zod.coerce.date(),
@@ -217,7 +223,7 @@ export const GetGovernedValueParams = zod.object({
 export const GetGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -230,6 +236,7 @@ export const GetGovernedValueResponse = zod.object({
   "supersededById": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()),
   "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "usageCount": zod.number(),
   "rowVersion": zod.number(),
   "createdAt": zod.coerce.date(),
@@ -274,13 +281,14 @@ export const UpdateGovernedValueBody = zod.object({
   "parentId": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()).optional(),
   "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "rowVersion": zod.number()
 })
 
 export const UpdateGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -293,6 +301,7 @@ export const UpdateGovernedValueResponse = zod.object({
   "supersededById": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()),
   "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "usageCount": zod.number(),
   "rowVersion": zod.number(),
   "createdAt": zod.coerce.date(),
@@ -324,7 +333,7 @@ export const TransitionGovernedValueBody = zod.object({
 export const TransitionGovernedValueResponse = zod.object({
   "id": zod.string(),
   "stableKey": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "displayName": zod.string(),
   "definition": zod.string(),
   "status": zod.enum(['draft', 'in_review', 'approved', 'active', 'inactive', 'superseded']),
@@ -337,6 +346,7 @@ export const TransitionGovernedValueResponse = zod.object({
   "supersededById": zod.string().nullish(),
   "legacyCodes": zod.array(zod.string()),
   "measurementRule": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "usageCount": zod.number(),
   "rowVersion": zod.number(),
   "createdAt": zod.coerce.date(),
@@ -378,7 +388,7 @@ export const CreateTaxonomyAssociationResponse = zod.object({
 
 export const ListTaxonomyReviewRequestsResponseItem = zod.object({
   "id": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "proposedName": zod.string(),
   "context": zod.string(),
   "status": zod.enum(['open', 'resolved', 'rejected']),
@@ -389,14 +399,14 @@ export const ListTaxonomyReviewRequestsResponse = zod.array(ListTaxonomyReviewRe
 
 
 export const CreateTaxonomyReviewRequestBody = zod.object({
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "proposedName": zod.string(),
   "context": zod.string()
 })
 
 export const CreateTaxonomyReviewRequestResponse = zod.object({
   "id": zod.string(),
-  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center']),
+  "category": zod.enum(['strategic_program', 'segment', 'subsegment', 'account_size_tier', 'account_priority_tier', 'relationship', 'buying_group_function', 'persona', 'seniority_level', 'messaging_cohort', 'behavioral_cohort', 'audience_origin', 'product', 'product_family', 'capability_solution', 'customer_need', 'campaign_type', 'business_objective', 'commercial_motion', 'marketing_objective', 'primary_conversion', 'journey_stage', 'region', 'subregion', 'country', 'market_cluster', 'language', 'channel', 'source', 'delivery_mechanism', 'platform', 'activity_type', 'creative_format', 'call_to_action', 'campaign_member_status_template', 'fiscal_calendar', 'fiscal_year', 'fiscal_quarter', 'fiscal_period', 'currency', 'cost_center', 'product_line', 'campaign_shortcode', 'subcampaign', 'ads_subtype', 'utm_objective', 'audience', 'audience_segment', 'utm_region', 'creative_type', 'image_size', 'gif_size', 'video_length', 'content_type', 'creative_cta', 'content_order', 'email_type', 'partner_email_type', 'owner', 'capture_source', 'newsletter_version', 'link_position', 'nurture_sequence', 'form_interest', 'form_newsletter', 'display_partner', 'app_source']),
   "proposedName": zod.string(),
   "context": zod.string(),
   "status": zod.enum(['open', 'resolved', 'rejected']),

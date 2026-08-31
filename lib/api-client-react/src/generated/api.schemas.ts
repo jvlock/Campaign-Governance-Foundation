@@ -120,6 +120,32 @@ export const TaxonomyCategoryKey = {
   fiscal_period: 'fiscal_period',
   currency: 'currency',
   cost_center: 'cost_center',
+  product_line: 'product_line',
+  campaign_shortcode: 'campaign_shortcode',
+  subcampaign: 'subcampaign',
+  ads_subtype: 'ads_subtype',
+  utm_objective: 'utm_objective',
+  audience: 'audience',
+  audience_segment: 'audience_segment',
+  utm_region: 'utm_region',
+  creative_type: 'creative_type',
+  image_size: 'image_size',
+  gif_size: 'gif_size',
+  video_length: 'video_length',
+  content_type: 'content_type',
+  creative_cta: 'creative_cta',
+  content_order: 'content_order',
+  email_type: 'email_type',
+  partner_email_type: 'partner_email_type',
+  owner: 'owner',
+  capture_source: 'capture_source',
+  newsletter_version: 'newsletter_version',
+  link_position: 'link_position',
+  nurture_sequence: 'nurture_sequence',
+  form_interest: 'form_interest',
+  form_newsletter: 'form_newsletter',
+  display_partner: 'display_partner',
+  app_source: 'app_source',
 } as const;
 
 export type GovernanceStatus = typeof GovernanceStatus[keyof typeof GovernanceStatus];
@@ -141,6 +167,8 @@ export interface TaxonomyCategory {
   supportsMeasurementRule: boolean;
 }
 
+export type GovernedValueMetadata = { [key: string]: unknown };
+
 export interface GovernedValue {
   id: string;
   stableKey: string;
@@ -161,6 +189,7 @@ export interface GovernedValue {
   legacyCodes: string[];
   /** @nullable */
   measurementRule?: string | null;
+  metadata?: GovernedValueMetadata;
   usageCount: number;
   rowVersion: number;
   createdAt: string;
@@ -193,6 +222,8 @@ export type GovernedValueDetail = GovernedValue & {
   history: TaxonomyAuditEvent[];
 };
 
+export type GovernedValueInputMetadata = { [key: string]: unknown };
+
 export interface GovernedValueInput {
   /** @minLength 3 */
   stableKey: string;
@@ -215,7 +246,10 @@ export interface GovernedValueInput {
   legacyCodes?: string[];
   /** @nullable */
   measurementRule?: string | null;
+  metadata?: GovernedValueInputMetadata;
 }
+
+export type GovernedValueUpdateMetadata = { [key: string]: unknown };
 
 export interface GovernedValueUpdate {
   /** @minLength 1 */
@@ -233,6 +267,7 @@ export interface GovernedValueUpdate {
   legacyCodes?: string[];
   /** @nullable */
   measurementRule?: string | null;
+  metadata?: GovernedValueUpdateMetadata;
   rowVersion: number;
 }
 
@@ -1476,6 +1511,7 @@ category?: TaxonomyCategoryKey;
 status?: GovernanceStatus;
 search?: string;
 parentId?: string;
+includeTestData?: boolean;
 };
 
 export type ListCampaignsParams = {
