@@ -27,6 +27,24 @@ test("stable taxonomy and campaign keys are unique", async () => {
   assert.equal(Number(result.rows[0]?.campaignDuplicates), 0);
 });
 
+test("campaign duplicate protection uses serializer-safe generated columns", async () => {
+  const result = await pool.query<{ generatedColumns: string; indexDefinition: string }>(`
+    select
+      (select count(*) from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'campaigns'
+          and column_name in ('normalized_name', 'normalized_start_date')
+          and is_generated = 'ALWAYS')::text as "generatedColumns",
+      (select indexdef from pg_indexes
+        where schemaname = 'public'
+          and tablename = 'campaigns'
+          and indexname = 'campaign_normalized_period_type_unique') as "indexDefinition"
+  `);
+  assert.equal(Number(result.rows[0]?.generatedColumns), 2);
+  assert.match(result.rows[0]?.indexDefinition ?? "", /\(normalized_name, normalized_start_date, campaign_type\)/);
+  assert.doesNotMatch(result.rows[0]?.indexDefinition ?? "", /regexp_replace/);
+});
+
 test("main finance, activity, and immutable execution protections remain installed", async () => {
   const result = await pool.query<{ constraints: string; triggers: string; configurations: string }>(`
     select
@@ -70,10 +88,14 @@ test("migration journal retains main history and generated Task 6 metadata", () 
     "0005_closed_period_delete_lock", "0006_configurable_channel_activities",
     "0007_schema_push_integrity_repair", "0008_display_partnership_paid_media_fields",
     "0009_execution_delivery_publish", "0010_campaign_task6_governance",
+    "0013_campaign_normalized_columns",
   ]) assert.ok(journal.entries.some((entry: { tag: string }) => entry.tag === tag), `missing ${tag}`);
   const migration = fs.readFileSync("../lib/db/drizzle/0010_campaign_task6_governance.sql", "utf8");
   assert.match(migration, /messaging_cohort_versions/);
   assert.match(migration, /campaign_normalized_period_type_unique/);
+  const serializerSafeMigration = fs.readFileSync("../lib/db/drizzle/0013_campaign_normalized_columns.sql", "utf8");
+  assert.match(serializerSafeMigration, /normalized_name/);
+  assert.match(serializerSafeMigration, /normalized_start_date/);
 });
 
 test.after(async () => {

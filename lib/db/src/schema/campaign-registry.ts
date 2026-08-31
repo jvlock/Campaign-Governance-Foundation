@@ -42,6 +42,9 @@ export const activityTypeConfigurationsTable = pgTable("activity_type_configurat
 export const campaignsTable = pgTable("campaigns", {
   campaignKey: uuid("campaign_key").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  normalizedName: text("normalized_name").generatedAlwaysAs(
+    sql`regexp_replace(lower(trim("name")), '[^a-z0-9]+', ' ', 'g')`,
+  ),
   campaignType: text("campaign_type").notNull(),
   relationshipType: text("relationship_type").notNull().default("new"),
   parentCampaignKey: uuid("parent_campaign_key").references((): any => campaignsTable.campaignKey, { onDelete: "restrict" }),
@@ -51,6 +54,9 @@ export const campaignsTable = pgTable("campaigns", {
   customerNeed: text("customer_need"),
   desiredAction: text("desired_action"),
   startDate: date("start_date", { mode: "string" }),
+  normalizedStartDate: date("normalized_start_date", { mode: "string" }).generatedAlwaysAs(
+    sql`coalesce("start_date", DATE '0001-01-01')`,
+  ),
   endDate: date("end_date", { mode: "string" }),
   isEvergreen: boolean("is_evergreen").notNull().default(false),
   reviewDate: date("review_date", { mode: "string" }),
@@ -67,8 +73,8 @@ export const campaignsTable = pgTable("campaigns", {
   index("campaigns_status_dates_idx").on(table.status, table.startDate, table.endDate),
   index("campaigns_parent_idx").on(table.parentCampaignKey),
   uniqueIndex("campaign_normalized_period_type_unique").on(
-    sql`regexp_replace(lower(trim(${table.name})), '[^a-z0-9]+', ' ', 'g')`,
-    sql`coalesce(${table.startDate}, DATE '0001-01-01')`,
+    table.normalizedName,
+    table.normalizedStartDate,
     table.campaignType,
   ),
 ]);

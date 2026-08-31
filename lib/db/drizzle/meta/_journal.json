@@ -92,6 +92,13 @@
       "when": 1788201600000,
       "tag": "0012_governed_value_canonical_source",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788205200000,
+      "tag": "0013_campaign_normalized_columns",
+      "breakpoints": true
     }
   ]
 }
